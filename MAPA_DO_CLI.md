@@ -89,7 +89,6 @@ vectorgov-cli/
 │   ├── __init__.py              # Versão e metadata
 │   ├── main.py                  # Entry point Typer (registro de comandos)
 │   ├── commands/
-│   │   ├── ask.py               # Contexto para LLMs
 │   │   ├── audit.py             # Logs e estatísticas de uso
 │   │   ├── auth.py              # Login, logout, status
 │   │   ├── config.py            # Gerenciamento de configurações
@@ -149,7 +148,6 @@ vectorgov-cli/
 
 | Comando | Descrição | Exemplo |
 |---------|-----------|---------|
-| `ask` | Contexto para LLMs | `vectorgov ask "Quando o ETP pode ser dispensado?"` |
 | `context` | Bloco completo (busca + prompt) para LLMs | `vectorgov context "dispensa de licitação" --format messages` |
 | `tokens` | Estimativa de tokens | `vectorgov tokens "pesquisa de preços" --top-k 10` |
 | `prompts list` | Lista system prompts disponíveis | `vectorgov prompts list` |
@@ -391,16 +389,6 @@ vectorgov search "ETP" --output json
 
 # JSON raw (para pipes)
 vectorgov search "ETP" --raw | jq '.hits | length'
-```
-
-### Contexto com ask
-
-```bash
-# Obtém contexto e mostra código de exemplo
-vectorgov ask "Quando o ETP pode ser dispensado?" --code
-
-# Saída em formato messages (pronto para LLM)
-vectorgov ask "critérios de julgamento" --output json
 ```
 
 ### Estimativa de Tokens

@@ -5,6 +5,18 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.2.6] - 2026-04-12
+
+### Alterado
+
+- Comando `ask` agora e restrito a administradores e escondido do
+  `--help` geral. Usuarios nao-admin que tentarem usar recebem erro
+  orientando a usar `vectorgov search` ou `vectorgov context`.
+- Toda a documentacao publica (README, MAPA_DO_CLI, CHANGELOG) foi
+  atualizada para remover referencias ao comando.
+- A verificacao usa o novo endpoint `GET /api/v1/sdk/me` do backend,
+  que retorna os scopes da API key atual.
+
 ## [0.2.5] - 2026-04-12
 
 ### Adicionado

@@ -83,7 +83,6 @@ vectorgov search --raw "dispensa de licitação" | jq -r '.hits[] | "- \(.docume
 | Comando | Descrição |
 |---------|-----------|
 | `search` | Busca semântica em legislação (filtros: `--tipo`, `--ano`, `--doc`) |
-| `ask` | Contexto para LLMs (busca + system prompt) |
 | `smart-search` | Busca inteligente MOC v4 com análise de confiança |
 | `hybrid` | Busca semântica + expansão por grafo normativo |
 | `lookup` | Consulta de artigo específico por referência legal |
@@ -152,22 +151,16 @@ vectorgov search "licitação" --raw | jq '.hits[0].text'
 - `--output/-o` (table/json/text/markdown)
 - `--raw` — saída JSON bruto para piping
 
-### Perguntas (contexto para LLM)
+### Contexto para LLMs
 
-O comando `ask` busca contexto relevante para você usar com seu próprio LLM (OpenAI, Anthropic, Google, etc).
+Use o comando `context` para gerar um bloco completo (busca + system prompt) pronto para colar em qualquer LLM (OpenAI, Anthropic, Google, etc).
 
 ```bash
-# Busca contexto para pergunta
-vectorgov ask "O que é ETP?"
+# Bloco de contexto em texto puro
+vectorgov context "O que é ETP?"
 
-# Com mais contexto
-vectorgov ask "Quando o ETP pode ser dispensado?" --top-k 10 --mode precise
-
-# Saída em formato messages (pronto para LLM)
-vectorgov ask "critérios de julgamento" --output json
-
-# Mostrar código de exemplo para integração
-vectorgov ask "O que é ETP?" --code
+# Formato messages (OpenAI-compatible)
+vectorgov context "critérios de julgamento" --format messages
 ```
 
 **Exemplo de integração com OpenAI:**
@@ -610,9 +603,6 @@ vectorgov search "licitação" --output json > resultados.json
 QUERY_ID=$(vectorgov search "ETP" --raw | jq -r '.query_id')
 vectorgov feedback send $QUERY_ID --like
 
-# Obter contexto para LLM
-vectorgov ask "O que é ETP?" --raw | jq '.messages'
-
 # Contexto completo para colar no ChatGPT/Claude
 vectorgov context "dispensa de licitação" --format raw
 
@@ -654,7 +644,7 @@ vectorgov --help
 
 # Ajuda de comando específico
 vectorgov search --help
-vectorgov ask --help
+vectorgov context --help
 
 # Versão do CLI
 vectorgov --version    # ou -V
