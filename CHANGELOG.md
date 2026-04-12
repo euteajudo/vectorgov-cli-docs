@@ -5,6 +5,24 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.2.7] - 2026-04-12
+
+### Corrigido
+
+- `vectorgov lookup -o json` agora emite JSON estruturado em vez de
+  serializar o dict Python do match inteiro dentro do campo `text` do
+  primeiro hit. Causa raiz: quando o backend remove `node_id` por
+  seguranca, o SDK retorna `result.match = None` e o CLI faz fallback
+  construindo um dict via `_build_match_from_raw`. O codigo usava
+  `getattr(h, "text", str(h))` que em dicts cai no `str(h)` e serializa
+  o dict inteiro como string.
+- Helper `_get()` interno que le campos de dict OU de objeto Hit
+  uniformemente, aplicado tambem ao output text (Panel).
+- Output `-o json` agora promove `evidence_url` e `document_url` para
+  top-level, alem de expor `status`, `query`, `total` e campos
+  estruturados em cada hit (`device_type`, `document_id`,
+  `article_number`, `breadcrumb`).
+
 ## [0.2.6] - 2026-04-12
 
 ### Alterado
