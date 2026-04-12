@@ -109,7 +109,7 @@ comandos de busca expõem os links de evidência em todos os formatos de saída.
 
 Alguns comandos podem retornar `evidence_url: null` e `document_url: null`
 porque o backend ainda não popula esses campos neles:
-- `grep` — busca textual via ripgrep, sem enriquecimento
+- `grep` — busca textual, sem enriquecimento
 - `fs-search` — idem
 - `merged` — dual-path que combina hybrid + filesystem; os hits do hybrid
   deveriam carregar os links mas o merge step não está propagando
@@ -136,7 +136,7 @@ O fix do backend para esses 4 pontos está em SPEC separada.
 
 - `merged`: novos flags `--doc/-d`, `--no-hybrid`, `--no-filesystem`
   - `--doc` filtra por document_id
-  - `--no-hybrid` desabilita Milvus+Neo4j (usa só filesystem)
+  - `--no-hybrid` desabilita busca semântica (usa só índice curado)
   - `--no-filesystem` desabilita índice curado (usa só hybrid)
   - Guard: erro se ambos `--no-*` usados juntos
 
@@ -172,13 +172,13 @@ com todos os parâmetros funcionais:
 
 ### Adicionado
 - `smart-search`: Busca inteligente MOC v4 com análise de completude e nível de confiança
-- `hybrid`: Busca semântica + expansão por grafo normativo (Neo4j)
+- `hybrid`: Busca semântica + expansão por grafo normativo
 - `lookup`: Consulta de artigo específico por referência legal
   - Novos flags `--parent/--no-parent` e `--siblings/--no-siblings`
 - `grep`: Busca exata por texto no corpo das normas
   - Novos flags `--max/-n` (1-50) e `--context/-C` (0-10)
 - `merged`: Busca dual-path combinando semântica + índice curado (RRF)
-- `fs-search`: Busca no índice curado (PostgreSQL + ripgrep), modo `auto/index/grep/both`
+- `fs-search`: Busca no índice curado, modo `auto/index/grep/both`
 - `audit logs`: Histórico de requisições à API
 - `audit stats`: Estatísticas agregadas de uso
 - `quota`: Consulta de uso do plano (smart_search + créditos)

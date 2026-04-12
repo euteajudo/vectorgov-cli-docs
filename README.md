@@ -85,11 +85,11 @@ vectorgov search --raw "dispensa de licitação" | jq -r '.hits[] | "- \(.docume
 | `search` | Busca semântica em legislação (filtros: `--tipo`, `--ano`, `--doc`) |
 | `ask` | Contexto para LLMs (busca + system prompt) |
 | `smart-search` | Busca inteligente MOC v4 com análise de confiança |
-| `hybrid` | Busca semântica + expansão por grafo normativo (Neo4j) |
+| `hybrid` | Busca semântica + expansão por grafo normativo |
 | `lookup` | Consulta de artigo específico por referência legal |
 | `grep` | Busca exata por texto no corpo das normas |
 | `merged` | Busca dual-path: semântica + índice curado (RRF) |
-| `fs-search` | Busca no índice curado (PG + ripgrep) — texto exato |
+| `fs-search` | Busca no índice curado — texto exato |
 | `read` | Lê texto canônico de documento/dispositivo |
 | `explain` | Contexto completo de um dispositivo (lookup + texto consolidado) |
 | `context` | Bloco completo (busca + prompt) pronto para LLMs |
@@ -272,8 +272,8 @@ vectorgov smart-search "pesquisa de preços" --cache
 
 ### Hybrid
 
-Busca semântica enriquecida com expansão por grafo normativo (Neo4j). Retorna
-evidências diretas (hits do Milvus) + artigos citados (expansão via grafo).
+Busca semântica enriquecida com expansão por grafo normativo. Retorna
+evidências diretas + artigos citados (expansão via grafo).
 
 ```bash
 # Busca híbrida
@@ -327,7 +327,7 @@ referência (ex: `"Art. 75 da Lei 14.133"` em vez de `"Art. 75" --doc ...`).
 
 ### Grep
 
-Busca exata por texto no corpo das normas via ripgrep. Diferente do `search` (semântico), o `grep` procura ocorrências literais.
+Busca exata por texto no corpo das normas. Diferente do `search` (semântico), o `grep` procura ocorrências literais.
 
 ```bash
 # Busca textual exata
@@ -350,7 +350,7 @@ vectorgov grep "art. 75" --doc LEI-14133-2021 --max 3
 
 ### Merged
 
-Busca dual-path combinando semântica (Milvus+Neo4j) + índice curado (PG+ripgrep)
+Busca dual-path combinando busca semântica + índice curado
 com Reciprocal Rank Fusion (RRF).
 
 ```bash
@@ -362,16 +362,16 @@ vectorgov merged "Pesquisa de preços" --top-k 15
 vectorgov merged "art. 75" --doc LEI-14133-2021
 
 # Controle granular de backends (v0.2.1)
-vectorgov merged "dispensa" --no-filesystem    # apenas hybrid (Milvus+Neo4j)
-vectorgov merged "licitação" --no-hybrid       # apenas filesystem (PG+ripgrep)
+vectorgov merged "dispensa" --no-filesystem    # apenas busca semântica
+vectorgov merged "licitação" --no-hybrid       # apenas índice curado
 ```
 
 **Opções**:
 - `--top-k/-k` (1-50, padrão: 10) — quantidade de resultados
 - `--doc/-d` — filtrar por documento específico
 - `--token-budget` — limite de tokens para contexto
-- `--no-hybrid` — desabilita Milvus+Neo4j (usa só filesystem)
-- `--no-filesystem` — desabilita índice curado (usa só hybrid)
+- `--no-hybrid` — desabilita busca semântica (usa só índice curado)
+- `--no-filesystem` — desabilita índice curado (usa só busca semântica)
 - `--output/-o` (table/json/text)
 - `--raw` — inclui `mutual_count`, `hybrid_count`, `filesystem_count` no output
 
@@ -402,7 +402,7 @@ quando já souber o `document_id` e `span_id` exatos (ex: após um `lookup`).
 
 ### Fs-search
 
-Busca no índice curado (PostgreSQL + ripgrep) — alternativa ao `search` vetorial.
+Busca no índice curado — alternativa ao `search` vetorial.
 Ideal para termos exatos e referências legais precisas (v0.2.0).
 
 ```bash
@@ -411,9 +411,9 @@ vectorgov fs-search "art. 75 da Lei 14.133"
 vectorgov fs-search "pregão eletrônico"
 
 # Modo específico
-vectorgov fs-search "dispensa" --mode index    # só PostgreSQL
-vectorgov fs-search "art. 75" --mode grep      # só ripgrep
-vectorgov fs-search "ETP" --mode both          # PG + ripgrep combinados
+vectorgov fs-search "dispensa" --mode index    # só busca indexada
+vectorgov fs-search "art. 75" --mode grep      # só busca textual
+vectorgov fs-search "ETP" --mode both          # índice + textual combinados
 
 # Filtrar por documento
 vectorgov fs-search "art. 75" --doc LEI-14133-2021 --output json

@@ -68,7 +68,7 @@ O VectorGov CLI é uma ferramenta de linha de comando para interagir com a API V
 │   ┌─────────┐               ┌────▼────┐          ┌─────────────────┐       │
 │   │ stdout  │◀──────────────│ Output  │          │   API VectorGov │       │
 │   │ (table/ │               │Formatter│          │vectorgov.io/api │       │
-│   │  json)  │               │         │          │  + Neo4j Graph  │       │
+│   │  json)  │               │         │          │                 │       │
 │   └─────────┘               └─────────┘          └─────────────────┘       │
 │                                                                             │
 │   ┌─────────┐                                                               │
@@ -137,11 +137,11 @@ vectorgov-cli/
 |---------|-----------|---------|------------------|
 | `search` | Busca semântica (filtros client-side) | `vectorgov search "dispensa" --tipo LEI --ano 2021` | `--top-k`, `--mode`, `--tipo`, `--ano`, `--doc`, `--cache` |
 | `smart-search` | Busca inteligente MOC v4 com confiança | `vectorgov smart-search "Quando o ETP pode ser dispensado?"` | `--cache`, `--output` |
-| `hybrid` | Busca semântica + grafo (Neo4j) | `vectorgov hybrid "Critérios de julgamento" --hops 2` | `--top-k`, `--hops`, `--graph-expansion`, `--token-budget` |
+| `hybrid` | Busca semântica + grafo normativo | `vectorgov hybrid "Critérios de julgamento" --hops 2` | `--top-k`, `--hops`, `--graph-expansion`, `--token-budget` |
 | `lookup` | Consulta artigo por referência legal | `vectorgov lookup "Art. 75 da Lei 14.133"` | `--parent/--no-parent`, `--siblings/--no-siblings` |
-| `grep` | Busca exata por texto (ripgrep) | `vectorgov grep "dispensa" --max 10 --context-lines 5` | `--doc`, `--max/-n`, `--context-lines/-C` |
+| `grep` | Busca exata por texto | `vectorgov grep "dispensa" --max 10 --context-lines 5` | `--doc`, `--max/-n`, `--context-lines/-C` |
 | `merged` | Busca dual-path (semântica + curado, RRF) | `vectorgov merged "licitação" --no-filesystem` | `--top-k`, `--doc`, `--no-hybrid`, `--no-filesystem`, `--token-budget` |
-| `fs-search` | Busca no índice curado (PG + ripgrep) | `vectorgov fs-search "art. 75 da Lei 14.133" --mode grep` | `--doc`, `--top-k`, `--mode` (auto/index/grep/both) |
+| `fs-search` | Busca no índice curado | `vectorgov fs-search "art. 75 da Lei 14.133" --mode grep` | `--doc`, `--top-k`, `--mode` (auto/index/grep/both) |
 | `read` | Lê texto canônico de documento/dispositivo | `vectorgov read LEI-14133-2021 --span ART-075` | `--span/-s` |
 | `explain` | Contexto completo de dispositivo (lookup + texto consolidado) | `vectorgov explain "Art. 75 da Lei 14.133" --output llm` | `--output` (default: llm) |
 
@@ -223,7 +223,7 @@ vectorgov-cli/
 ```
 1. Usuário executa: vectorgov hybrid "critérios de julgamento" --hops 2
 2. main.py:hybrid() parseia argumentos
-3. VectorGov SDK chama /retrieve/hybrid (Milvus + Neo4j)
+3. VectorGov SDK faz busca semântica + expansão por grafo normativo
 4. API retorna evidence_direct + cited_expansion
 5. OutputFormatter exibe evidências diretas e artigos citados via grafo
 ```
