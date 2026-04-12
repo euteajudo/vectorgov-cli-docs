@@ -662,4 +662,3 @@ vectorgov ask --help
 - [Documentação](https://vectorgov.io/documentacao)
 - [Playground](https://vectorgov.io/playground)
 - [SDK Python](https://pypi.org/project/vectorgov/)
-- [SDK TypeScript](https://www.npmjs.com/package/vectorgov)
