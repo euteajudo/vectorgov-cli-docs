@@ -655,6 +655,10 @@ vectorgov --help
 # Ajuda de comando específico
 vectorgov search --help
 vectorgov ask --help
+
+# Versão do CLI
+vectorgov --version    # ou -V
+vectorgov version      # subcomando (alternativa)
 ```
 
 ## Links

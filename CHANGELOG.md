@@ -5,6 +5,27 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.2.5] - 2026-04-12
+
+### Adicionado
+
+- Flag `--version` / `-V` no nivel global do CLI, seguindo a convencao
+  de ferramentas como `python`, `node`, `git`, `pip`, `docker`, etc:
+
+      vectorgov --version
+      vectorgov -V
+
+  O subcomando `vectorgov version` continua funcionando normalmente
+  para compatibilidade.
+
+## [0.2.4] - 2026-04-12
+
+### Alterado
+
+Documentacao interna limpa: removidas menções a tecnologias específicas do
+stack backend nos docstrings, comentários e help messages. README, MAPA_DO_CLI
+e CHANGELOG também atualizados. Não há mudanças de comportamento nem de API.
+
 ## [0.2.3] - 2026-04-12
 
 ### Adicionado — features otimizadas para consumo por IAs

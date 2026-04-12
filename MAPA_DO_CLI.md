@@ -1,6 +1,6 @@
 # MAPA DO CLI VECTORGOV
 
-> **Versão**: 0.2.3
+> **Versão**: 0.2.5
 > **Data**: Abril 2026
 > **Objetivo**: Documentação completa da arquitetura e funcionamento do CLI VectorGov
 
@@ -454,6 +454,8 @@ vectorgov init --claude
 
 | Versão | Data | Mudanças |
 |--------|------|----------|
+| 0.2.5 | 12/04/2026 | Adiciona flag `--version` / `-V` global (convenção python/node/git/pip). Subcomando `version` mantido para compat. |
+| 0.2.4 | 12/04/2026 | Documentação interna limpa: remove menções a tecnologias específicas do stack backend nos docstrings, comentários, help messages, README, MAPA e CHANGELOG. |
 | 0.2.3 | 12/04/2026 | Features otimizadas para IAs: `--output llm` (texto puro sem ANSI/JSON), `VECTORGOV_OUTPUT` env var + config `default_output`, comando `explain` (lookup+texto consolidado em 1 chamada), `--pipe` em lookup (batch stdin). 21 comandos (era 19). |
 | 0.2.2 | 11/04/2026 | Links de evidência expostos em todos os outputs (raw, json, table, text, markdown) dos 7 comandos de busca. Novos helpers em `utils/output.py`: `absolute_url`, `get_evidence_links`, `hit_to_raw_dict`, `render_evidence_lines_text`, `render_evidence_cell_table`, `render_evidence_markdown`. Workaround para bug do SDK v0.16 em `lookup` (campos ausentes no `LookupResult` mas presentes em `_raw_response`). |
 | 0.2.1 | 11/04/2026 | Paridade 10/10 SDK × CLI: novo `read` (canonical reader), filtros `--tipo/--ano/--doc` em `search`, flags granulares `--no-hybrid/--no-filesystem` em `merged`, paginação `--page/--limit` em `docs list`, remoção do flag morto `--doc` de `lookup` |
