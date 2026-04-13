@@ -5,6 +5,45 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.2.12] - 2026-04-12
+
+### Corrigido
+
+- `render_llm_output` (modo `-o llm`) agora le campos de hits que sao
+  `dict` (nao so objetos SDK). Antes, `lookup -o llm` deixava o campo
+  `text` vazio no output quando o match era construido via fallback
+  `_build_match_from_raw` (dict em vez de Hit).
+- Limite do texto no modo llm aumentado de 500 para 2000 chars — mais
+  adequado para artigos inteiros consolidados.
+
+### Adicionado
+
+- Modo `-o llm` do lookup agora exibe `nota_especialista` e
+  `jurisprudencia_tcu` (quando presentes) em secoes dedicadas com
+  separador `---`, seguindo o mesmo padrao do modo text.
+
+## [0.2.11] - 2026-04-12
+
+### Corrigido
+
+- `vectorgov lookup` de um ARTIGO inteiro nao duplica mais os filhos
+  na lista de hits. Como o match.text ja contem o stitched_text
+  completo (caput + incisos + paragrafos), incluir tambem cada
+  children individualmente era redundante (1 hit do match + N hits
+  dos filhos com mesmo conteudo). Agora: artigos retornam apenas
+  1 hit (o match). Para inciso/paragrafo especifico, children
+  continua sendo incluido como antes.
+
+### Adicionado
+
+- Expoe campos de curadoria (SPEC 1C) no output do lookup:
+  - `nota_especialista` — comentario do especialista juridico
+  - `jurisprudencia_tcu` — texto de jurisprudencia relacionada
+  - `acordao_tcu_key` — numero do acordao TCU (ex: "1852/2020")
+  - `acordao_tcu_link` — link para o acordao completo
+  Disponivel em todos os formatos (text, json, llm, raw). No modo
+  text, aparecem em Panels dedicados abaixo dos hits.
+
 ## [0.2.10] - 2026-04-12
 
 ### Corrigido
