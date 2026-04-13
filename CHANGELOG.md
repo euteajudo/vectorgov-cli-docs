@@ -5,6 +5,15 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.2.9] - 2026-04-12
+
+### Corrigido
+
+- `vectorgov lookup` em modo batch (auto-split e `--pipe`) agora exibe
+  `evidence_url` e `document_url` de cada resultado no output text,
+  seguindo o mesmo padrao do modo single. Antes, os links so apareciam
+  no modo `llm` e no `--raw`/`json`.
+
 ## [0.2.8] - 2026-04-12
 
 ### Corrigido
