@@ -5,6 +5,91 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.3.0] - 2026-04-12
+
+### Adicionado
+
+- **Request ID em todos os comandos**: `Request ID: <32 chars>` aparece
+  no rodape do output text/llm e como campo `request_id` no output JSON
+  de todos os comandos de busca (`search`, `lookup`, `hybrid`,
+  `smart-search`, `ask`, `merged`, `grep`, `fs-search`, `read`,
+  `explain`, `docs list/info`, `context`, `tokens`, `feedback`). Use
+  este ID para correlacao com logs no dashboard `/uso-api` e para
+  suporte tecnico.
+- Helpers novos em `utils/output.py`:
+  - `render_request_id_line(request_id, prefix="")`: retorna lista de
+    linhas para composicao programatica com `extend()`.
+  - `print_request_id_footer(console, request_id)`: imprime rodape
+    dim-style via Rich no final de handlers text mode.
+  - `extract_request_id(result, raw_resp=None)`: extrai `request_id`
+    do result com fallback para `_raw_response` (graceful degradation
+    quando o SDK em uso nao expoe o campo).
+
+### Alterado
+
+- Versao bump **minor** (0.2.12 → 0.3.0) reflete contrato novo de saida:
+  campo `request_id` aparece no top-level do JSON de todos os comandos
+  de busca. Clientes automatizados (scripts, IDEs, CI/CD pipelines)
+  devem estar preparados para o novo campo, embora ele seja opcional.
+- `merged -o json`, `grep -o json`, `fs-search -o json` agora retornam
+  um objeto `{request_id, hits}` em vez de um array simples de hits —
+  necessario para incluir `request_id` no nivel superior do output.
+
+### Corrigido
+
+Auditoria sistematica de todos os 21 comandos com todos os formatos
+de saida (text/json/llm/raw) no Windows/Git Bash. 9 bugs encontrados
+e corrigidos:
+
+1. **UnicodeEncodeError em Windows** (stdout cp1252): `hybrid --raw`,
+   `fs-search` text, `context --smart`, `init --all` e outros comandos
+   quebravam com caracteres fora de cp1252 (`\u202f` non-breaking space,
+   `\u2713` checkmark, etc.). Fix aplicado em `main.py`: reconfigura
+   `sys.stdout`/`sys.stderr` para UTF-8 antes de qualquer comando rodar.
+   Acentos agora aparecem corretamente no Windows.
+
+2. **`config set default_output`**: reportava chave desconhecida mesmo
+   sendo o nome documentado no README. Causa: `config.py` validava
+   contra `output_format` (legado) mas `resolve_output_format()` lia
+   `default_output` (novo desde 0.2.3). Fix: aceitar ambas as chaves.
+
+3. **`merged --no-filesystem`**: retornava `Erro: 0` em vez de
+   `Nenhum resultado encontrado.` quando o backend devolvia lista
+   vazia. `typer.Exit(0)` era capturado pelo handler generico de
+   Exception. Fix: adicionar `except typer.Exit: raise` antes.
+
+4. **`audit logs -o json`** sem resultados: emitia texto em portugues
+   em vez de `[]`. Fix: emitir JSON vazio mesmo quando `entries == 0`.
+
+5. **`prompts show <qualquer_string>`**: aceitava nomes invalidos
+   (retornava o prompt default). Fix: validar `style` contra
+   `vg.available_prompts` e recusar nomes desconhecidos.
+
+6. **`feedback send <short_id>`**: mostrava erro 422 como JSON raw
+   do Pydantic. Fix: validar `query_id < 8` chars localmente com
+   mensagem amigavel em PT, e traduzir erros 422/404/401/403 do
+   backend antes de exibir.
+
+7. **`audit logs`/`audit stats`** com `typer.Exit(0)`: mesmo bug do
+   `merged --no-filesystem`. Fix: adicionar `except typer.Exit: raise`
+   nos handlers.
+
+8. **`docs list`** retornava coluna **Titulo** vazia para acordaos e
+   alguns outros documentos. Fix: deriva titulo humano do `document_id`
+   quando o backend nao retorna (ex: `AC-1.852-2.020-P` ->
+   `Acordao 1.852/2020 (Plenario)`).
+
+9. **`quota`** sem plano premium: mostrava `Informacao nao disponivel`
+   sem contexto. Fix: mensagens especificas por status HTTP (401/403
+   -> sem permissao, 404/405 -> plano gratuito, etc.) + hint com link
+   para pricing.
+
+### Compatibilidade
+
+- Graceful degradation: se a versao do SDK usada nao expoe `request_id`
+  (SDK < 0.18.0), o rodape e omitido e o campo JSON vem como `null`.
+  Bumpar a dep minima do SDK quando 0.18.0 for publicado no PyPI.
+
 ## [0.2.12] - 2026-04-12
 
 ### Corrigido
