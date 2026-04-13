@@ -5,6 +5,18 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.2.8] - 2026-04-12
+
+### Corrigido
+
+- `vectorgov lookup` agora renderiza resultados quando o backend faz
+  auto-split de multiplas referencias numa mesma query. Antes, uma
+  query como `"inc. I do Art. 75, inc. II do Art. 75"` retornava
+  `status=batch` do backend, mas o handler single do CLI nao tratava
+  esse caso e exibia "Nenhum dispositivo encontrado".
+- Nova renderizacao batch em todos os formatos: `text` (Panels), `json`,
+  `raw` (JSON estruturado) e `llm` (separador `---` entre refs).
+
 ## [0.2.7] - 2026-04-12
 
 ### Corrigido
