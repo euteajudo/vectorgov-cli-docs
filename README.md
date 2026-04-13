@@ -55,26 +55,51 @@ I - Estudo Técnico Preliminar - ETP: documento constitutivo...
     Baixar PDF: https://vectorgov.io/api/v1/evidence/download/source/IN-58-2022
 ```
 
-**Exemplo — `--raw` expõe os campos em cada hit**:
+**Exemplo — `-o json` mostra JSON estruturado direto no terminal (sem ferramentas externas)**:
 
 ```bash
-$ vectorgov search --raw --top-k 1 "ETP" | jq '.hits[0]'
+$ vectorgov search -o json --top-k 1 "ETP"
 {
-  "text": "I - Estudo Técnico Preliminar...",
-  "article_number": "3",
-  "document_id": "IN-58-2022",
-  "score": 0.987,
-  "evidence_url": "https://vectorgov.io/api/v1/evidence/IN-58-2022%23INC-003-I",
-  "document_url": "https://vectorgov.io/api/v1/evidence/download/source/IN-58-2022"
+  "query": "ETP",
+  "total": 1,
+  "hits": [
+    {
+      "text": "I - Estudo Técnico Preliminar...",
+      "article_number": "3",
+      "document_id": "IN-58-2022",
+      "score": 0.987,
+      "evidence_url": "https://vectorgov.io/api/v1/evidence/IN-58-2022%23INC-003-I",
+      "document_url": "https://vectorgov.io/api/v1/evidence/download/source/IN-58-2022"
+    }
+  ]
 }
 ```
 
-**Uso em pipeline com agentes LLM**:
+**Uso programático em Python — SDK oficial (recomendado, não precisa de CLI)**:
+
+```python
+from vectorgov import VectorGov
+
+vg = VectorGov(api_key="vg_xxx")
+results = vg.search("dispensa de licitação", top_k=5)
+
+for hit in results.hits:
+    print(f"- {hit.document_id}, Art. {hit.article_number} → {hit.evidence_url}")
+```
+
+**Uso avançado em scripts shell (requer `jq`)**:
+
+Para filtragem/transformação de JSON em pipelines bash — útil para automação e
+CI/CD — use [`jq`](https://jqlang.github.io/jq/). Instalação opcional:
+`choco install jq` (Windows), `brew install jq` (macOS), `apt install jq` (Linux).
 
 ```bash
-# Busca + extrai evidências pra montar citações manualmente
+# Extrair apenas URLs de evidência (requer jq)
 vectorgov search --raw "dispensa de licitação" | jq -r '.hits[] | "- \(.document_id), Art. \(.article_number) → \(.evidence_url)"'
 ```
+
+> **Dica**: na maioria dos casos `-o json`, `-o llm` ou o SDK Python já resolvem.
+> Só use `jq` se precisar encadear em pipelines shell complexos.
 
 ---
 
@@ -134,10 +159,10 @@ vectorgov search "dispensa" --tipo LEI --ano 2021
 vectorgov search "art. 75" --doc LEI-14133-2021
 vectorgov search "licitação" --tipo IN --ano 2022 --top-k 15
 
-# Saída em JSON
-vectorgov search "licitação" --output json
+# Saída em JSON estruturado no terminal (com syntax highlight)
+vectorgov search "licitação" -o json
 
-# JSON bruto (para pipes)
+# JSON bruto para pipes shell (requer jq — veja seção "Automação shell")
 vectorgov search "licitação" --raw | jq '.hits[0].text'
 ```
 
@@ -275,8 +300,8 @@ vectorgov hybrid "Critérios de julgamento em licitações"
 # Com mais hops e resultados
 vectorgov hybrid "Dispensa de licitação" --hops 2 --top-k 15
 
-# JSON bruto com graph_nodes e stats
-vectorgov hybrid "licitação" --raw | jq '.graph_nodes, .stats'
+# JSON estruturado com graph_nodes e stats
+vectorgov hybrid -o json "licitação"
 ```
 
 **Opções**:
@@ -331,7 +356,7 @@ vectorgov lookup -o json "Art. 11 da Lei 14.133"
 # 3. llm — Texto puro otimizado para colar em LLMs (sem ANSI/Rich)
 vectorgov lookup -o llm "Art. 11 da Lei 14.133"
 
-# 4. raw — JSON bruto para pipes e scripts
+# 4. raw — JSON bruto para pipes e scripts (com jq)
 vectorgov lookup --raw "Art. 11 da Lei 14.133" | jq '.match.text'
 ```
 
@@ -361,7 +386,10 @@ printf "Art. 75 da Lei 14.133\nArt. 33 da Lei 14.133" | vectorgov lookup --pipe
 # Batch em formato llm (bom para colar em LLM)
 vectorgov lookup -o llm "Art. 11, Art. 18 e Art. 75 da Lei 14.133"
 
-# Batch em raw JSON para processar com jq
+# Batch em JSON estruturado para ler no terminal
+vectorgov lookup -o json "Art. 11, Art. 18 da Lei 14.133"
+
+# Batch em raw JSON para automação shell (requer jq)
 vectorgov lookup --raw "Art. 11, Art. 18 da Lei 14.133" | jq '.results[].evidence_url'
 ```
 
@@ -431,8 +459,8 @@ vectorgov read LEI-14133-2021
 vectorgov read LEI-14133-2021 --span ART-075
 vectorgov read LEI-14133-2021 --span PAR-033-1
 
-# JSON bruto
-vectorgov read LEI-14133-2021 --span ART-075 --raw | jq .text
+# JSON estruturado
+vectorgov read LEI-14133-2021 --span ART-075 -o json
 ```
 
 **Opções**:
@@ -643,29 +671,72 @@ vectorgov search "O que é ETP?" --output json
 
 ## Integração com Outros Comandos
 
+### Uso básico (sem dependências externas)
+
 ```bash
-# Buscar e processar com jq
-vectorgov search "ETP" --raw | jq '.hits[0].text'
+# Ver resultados formatados no terminal (Panels Rich)
+vectorgov search "ETP"
 
-# Buscar e salvar
-vectorgov search "licitação" --output json > resultados.json
+# Ver JSON estruturado com syntax highlight
+vectorgov search -o json "ETP"
 
-# Usar em scripts
-QUERY_ID=$(vectorgov search "ETP" --raw | jq -r '.query_id')
-vectorgov feedback send $QUERY_ID --like
+# Texto puro otimizado para colar em ChatGPT/Claude
+vectorgov search -o llm "ETP"
+vectorgov context -o llm "dispensa de licitação"
 
-# Contexto completo para colar no ChatGPT/Claude
-vectorgov context "dispensa de licitação" --format raw
-
-# Lookup + pipe
-vectorgov lookup "Art. 75 da Lei 14.133" --raw | jq '.text'
+# Salvar JSON em arquivo
+vectorgov search "licitação" --raw > resultados.json
 
 # Grep exato em documento específico
-vectorgov grep "pregão eletrônico" --doc LEI-14.133-2021 --output json
-
-# Hybrid com expansão por grafo
-vectorgov hybrid "critérios de julgamento" --hops 2 --raw | jq '.cited_expansion'
+vectorgov grep "pregão eletrônico" --doc LEI-14133-2021 -o json
 ```
+
+### Integração em Python (recomendado para aplicações)
+
+Quando for consumir programaticamente, use o SDK oficial ao invés de fazer
+parse do output do CLI:
+
+```bash
+pip install vectorgov
+```
+
+```python
+from vectorgov import VectorGov
+
+vg = VectorGov(api_key="vg_xxx")
+results = vg.search("ETP", top_k=5)
+
+for hit in results.hits:
+    print(f"{hit.document_id}, Art. {hit.article_number}")
+    print(f"  {hit.evidence_url}")
+```
+
+### Automação shell (requer `jq`)
+
+Para pipelines bash com filtragem/transformação de JSON, instale o
+[`jq`](https://jqlang.github.io/jq/):
+- **Windows**: `choco install jq` ou `winget install jqlang.jq`
+- **macOS**: `brew install jq`
+- **Linux**: `apt install jq` / `dnf install jq`
+
+```bash
+# Extrair texto do primeiro hit
+vectorgov search --raw "ETP" | jq '.hits[0].text'
+
+# Capturar query_id em variável shell
+QUERY_ID=$(vectorgov search --raw "ETP" | jq -r '.query_id')
+vectorgov feedback send $QUERY_ID --like
+
+# Hybrid: extrair apenas artigos citados via grafo
+vectorgov hybrid "critérios de julgamento" --hops 2 --raw | jq '.cited_expansion'
+
+# Batch lookup: listar todas as URLs de evidência
+vectorgov lookup --raw "Art. 75, Art. 18 e Art. 33 da Lei 14.133" | jq -r '.results[].evidence_url'
+```
+
+> **Dica**: `jq` é opcional. Para uso interativo (leitura no terminal), os
+> formatos `text`, `llm` e `json` do próprio CLI já resolvem. Para código Python,
+> use o SDK. Só use `jq` se estiver escrevendo shell scripts de automação.
 
 ## Variáveis de Ambiente
 
