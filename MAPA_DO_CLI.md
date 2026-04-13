@@ -1,6 +1,6 @@
 # MAPA DO CLI VECTORGOV
 
-> **Versão**: 0.2.5
+> **Versão**: 0.2.12
 > **Data**: Abril 2026
 > **Objetivo**: Documentação completa da arquitetura e funcionamento do CLI VectorGov
 
@@ -137,7 +137,7 @@ vectorgov-cli/
 | `search` | Busca semântica (filtros client-side) | `vectorgov search "dispensa" --tipo LEI --ano 2021` | `--top-k`, `--mode`, `--tipo`, `--ano`, `--doc`, `--cache` |
 | `smart-search` | Busca inteligente MOC v4 com confiança | `vectorgov smart-search "Quando o ETP pode ser dispensado?"` | `--cache`, `--output` |
 | `hybrid` | Busca semântica + grafo normativo | `vectorgov hybrid "Critérios de julgamento" --hops 2` | `--top-k`, `--hops`, `--graph-expansion`, `--token-budget` |
-| `lookup` | Consulta artigo por referência legal | `vectorgov lookup "Art. 75 da Lei 14.133"` | `--parent/--no-parent`, `--siblings/--no-siblings` |
+| `lookup` | Consulta artigo/dispositivo por referência legal (suporta batch) | `vectorgov lookup "Art. 75 da Lei 14.133"` | `--parent/--no-parent`, `--siblings/--no-siblings`, `--pipe`, `-o text/json/llm`, `--raw` |
 | `grep` | Busca exata por texto | `vectorgov grep "dispensa" --max 10 --context-lines 5` | `--doc`, `--max/-n`, `--context-lines/-C` |
 | `merged` | Busca dual-path (semântica + curado, RRF) | `vectorgov merged "licitação" --no-filesystem` | `--top-k`, `--doc`, `--no-hybrid`, `--no-filesystem`, `--token-budget` |
 | `fs-search` | Busca no índice curado | `vectorgov fs-search "art. 75 da Lei 14.133" --mode grep` | `--doc`, `--top-k`, `--mode` (auto/index/grep/both) |
@@ -442,6 +442,13 @@ vectorgov init --claude
 
 | Versão | Data | Mudanças |
 |--------|------|----------|
+| 0.2.12 | 12/04/2026 | `render_llm_output` le dict hits + limite texto 2000 chars + expor `nota_especialista` e `jurisprudencia_tcu` no modo `-o llm`. |
+| 0.2.11 | 12/04/2026 | `lookup` de artigo nao duplica children em hits + expor curadoria SPEC 1C (`nota_especialista`, `jurisprudencia_tcu`, `acordao_tcu_key/link`) em text/json/raw. |
+| 0.2.10 | 12/04/2026 | `lookup -o json` em batch renderiza JSON estruturado (antes caia no branch text). |
+| 0.2.9 | 12/04/2026 | `lookup` batch text output exibe `evidence_url`/`document_url` de cada resultado. |
+| 0.2.8 | 12/04/2026 | `lookup` single renderiza auto-split batch do backend (antes exibia "Nenhum dispositivo encontrado"). |
+| 0.2.7 | 12/04/2026 | `lookup -o json` emite JSON estruturado (fix serializacao de dict Python no campo text). |
+| 0.2.6 | 12/04/2026 | Comando `ask` restrito a admins, escondido do `--help`. Verificacao via `GET /sdk/me`. |
 | 0.2.5 | 12/04/2026 | Adiciona flag `--version` / `-V` global (convenção python/node/git/pip). Subcomando `version` mantido para compat. |
 | 0.2.4 | 12/04/2026 | Documentação interna limpa: remove menções a tecnologias específicas do stack backend nos docstrings, comentários, help messages, README, MAPA e CHANGELOG. |
 | 0.2.3 | 12/04/2026 | Features otimizadas para IAs: `--output llm` (texto puro sem ANSI/JSON), `VECTORGOV_OUTPUT` env var + config `default_output`, comando `explain` (lookup+texto consolidado em 1 chamada), `--pipe` em lookup (batch stdin). 21 comandos (era 19). |

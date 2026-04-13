@@ -294,25 +294,76 @@ licitação" retornem algo.
 
 ### Lookup
 
-Consulta de artigo específico por referência legal. Resolve referências como "Art. 75 da Lei 14.133" diretamente.
+Consulta de dispositivo legal por referência em linguagem natural. Resolve
+referências como "Art. 75 da Lei 14.133", "§ 1º do Art. 33", "Inciso I do § 2
+do Art. 4", etc. Quando o dispositivo é um **artigo**, o retorno já vem com o
+texto completo consolidado (caput + incisos + parágrafos + alíneas).
 
 ```bash
 # Referência completa (inclua o nome da lei na própria referência)
 vectorgov lookup "Art. 75 da Lei 14.133"
 vectorgov lookup "§ 1º do Art. 33 da Lei 14.133/2021"
-vectorgov lookup "Inciso I do Art. 75 da IN 65/2021"
+vectorgov lookup "Inciso I do § 2 do Art. 4 da IN 67/2021"
 
-# Controle de parent e siblings (v0.2.0)
+# Controle de parent e siblings
 vectorgov lookup --no-parent "Art. 1 da Lei 14.133"
 vectorgov lookup --no-siblings "Art. 75 da Lei 14.133"
-vectorgov lookup --parent --siblings "Art. 33 inc I da Lei 14.133"
 ```
 
 **Opções**:
 - `--parent/--no-parent` (padrão: --parent) — incluir dispositivo pai
 - `--siblings/--no-siblings` (padrão: --siblings) — incluir dispositivos irmãos
-- `--output/-o` (text/json)
-- `--raw` — JSON bruto
+- `--output/-o` (text/json/llm) — formato de saída
+- `--raw` — JSON bruto sem formatação (para pipes)
+- `--pipe` — lê referências de stdin (uma por linha, batch)
+
+#### Formatos de saída
+
+O `lookup` suporta 4 formatos de saída para atender usos diferentes:
+
+```bash
+# 1. text (padrão) — Panels Rich com bordas e cores
+vectorgov lookup "Art. 11 da Lei 14.133"
+
+# 2. json — JSON estruturado com syntax highlight no console
+vectorgov lookup -o json "Art. 11 da Lei 14.133"
+
+# 3. llm — Texto puro otimizado para colar em LLMs (sem ANSI/Rich)
+vectorgov lookup -o llm "Art. 11 da Lei 14.133"
+
+# 4. raw — JSON bruto para pipes e scripts
+vectorgov lookup --raw "Art. 11 da Lei 14.133" | jq '.match.text'
+```
+
+Todos os formatos incluem, quando disponível:
+- Texto do dispositivo (consolidado para artigos)
+- `evidence_url` — link para o trecho destacado na norma
+- `document_url` — link para download do PDF original
+- `nota_especialista` — comentário do especialista jurídico (curadoria SPEC 1C)
+- `jurisprudencia_tcu` — jurisprudência relacionada (quando presente)
+
+No formato **text**, nota e jurisprudência aparecem em Panels dedicados
+(amarelo e magenta) abaixo dos hits. No **llm**, aparecem em seções com
+separador `---`. No **json** e **raw**, são campos top-level.
+
+#### Batch lookup (múltiplas referências)
+
+O lookup suporta batch de 2 formas:
+
+```bash
+# 1. Auto-split: múltiplas refs separadas por vírgula, ";" ou " e "
+vectorgov lookup "Art. 75 da Lei 14.133 e Art. 18 da Lei 14.133"
+vectorgov lookup "inc.I do § 2 do art. 4 da IN 67/2021, inc.II do § 2 do art. 4 da IN 67/2021"
+
+# 2. Via stdin com --pipe (uma ref por linha, até 20)
+printf "Art. 75 da Lei 14.133\nArt. 33 da Lei 14.133" | vectorgov lookup --pipe
+
+# Batch em formato llm (bom para colar em LLM)
+vectorgov lookup -o llm "Art. 11, Art. 18 e Art. 75 da Lei 14.133"
+
+# Batch em raw JSON para processar com jq
+vectorgov lookup --raw "Art. 11, Art. 18 da Lei 14.133" | jq '.results[].evidence_url'
+```
 
 **Nota**: o flag `--doc` foi removido na v0.2.1. O SDK `vg.lookup()` não aceita
 `document_id` separado — para filtrar por documento, inclua o nome na própria
