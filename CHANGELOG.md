@@ -5,6 +5,15 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.2.10] - 2026-04-12
+
+### Corrigido
+
+- `vectorgov lookup -o json` em modo batch (auto-split) agora emite
+  JSON estruturado com syntax highlight via `console.print_json`.
+  Antes, o `-o json` caia no branch text e renderizava Panels Rich
+  em vez de JSON.
+
 ## [0.2.9] - 2026-04-12
 
 ### Corrigido
