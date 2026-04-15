@@ -145,6 +145,19 @@ export VECTORGOV_API_KEY="vg_sua_chave"
 
 ## Uso
 
+> **Ordem dos argumentos**: nos comandos que aceitam uma query
+> (`search`, `grep`, `smart-search`, `hybrid`, `merged`, `fs-search`,
+> `context`, `tokens`, `explain`), **coloque as flags ANTES da query**.
+> A query deve ser o último argumento da linha de comando.
+>
+> ```bash
+> # ✅ correto
+> vectorgov search --top-k 10 --mode precise "pesquisa de preços"
+>
+> # ❌ erro: Missing argument 'QUERY'
+> vectorgov search "pesquisa de preços" --top-k 10 --mode precise
+> ```
+
 ### Busca
 
 ```bash
@@ -152,18 +165,18 @@ export VECTORGOV_API_KEY="vg_sua_chave"
 vectorgov search "O que é ETP?"
 
 # Com opções
-vectorgov search "pesquisa de preços" --top-k 10 --mode precise
+vectorgov search --top-k 10 --mode precise "pesquisa de preços"
 
 # Com filtros (v0.2.1)
-vectorgov search "dispensa" --tipo LEI --ano 2021
-vectorgov search "art. 75" --doc LEI-14133-2021
-vectorgov search "licitação" --tipo IN --ano 2022 --top-k 15
+vectorgov search --tipo LEI --ano 2021 "dispensa"
+vectorgov search --doc LEI-14133-2021 "art. 75"
+vectorgov search --tipo IN --ano 2022 --top-k 15 "licitação"
 
 # Saída em JSON estruturado no terminal (com syntax highlight)
-vectorgov search "licitação" -o json
+vectorgov search -o json "licitação"
 
 # JSON bruto para pipes shell (requer jq — veja seção "Automação shell")
-vectorgov search "licitação" --raw | jq '.hits[0].text'
+vectorgov search --raw "licitação" | jq '.hits[0].text'
 ```
 
 **Opções**:
@@ -185,7 +198,7 @@ Use o comando `context` para gerar um bloco completo (busca + system prompt) pro
 vectorgov context "O que é ETP?"
 
 # Formato messages (OpenAI-compatible)
-vectorgov context "critérios de julgamento" --format messages
+vectorgov context --format messages "critérios de julgamento"
 ```
 
 **Exemplo de integração com OpenAI:**
@@ -223,10 +236,10 @@ Estima quantos tokens uma busca consumiria, util para planejar uso com LLMs.
 vectorgov tokens "O que e ETP?"
 
 # Com mais resultados
-vectorgov tokens "pesquisa de precos" --top-k 10
+vectorgov tokens --top-k 10 "pesquisa de precos"
 
 # Saida em JSON
-vectorgov tokens "licitacao" --output json
+vectorgov tokens --output json "licitacao"
 ```
 
 Exemplo de saida:
@@ -282,10 +295,10 @@ Busca inteligente MOC v4 com análise de completude e nível de confiança (ALTO
 vectorgov smart-search "Quando o ETP pode ser dispensado?"
 
 # Saída em JSON
-vectorgov smart-search "critérios de julgamento" --output json
+vectorgov smart-search --output json "critérios de julgamento"
 
 # Com cache
-vectorgov smart-search "pesquisa de preços" --cache
+vectorgov smart-search --cache "pesquisa de preços"
 ```
 
 ### Hybrid
@@ -298,7 +311,7 @@ evidências diretas + artigos citados (expansão via grafo).
 vectorgov hybrid "Critérios de julgamento em licitações"
 
 # Com mais hops e resultados
-vectorgov hybrid "Dispensa de licitação" --hops 2 --top-k 15
+vectorgov hybrid --hops 2 --top-k 15 "Dispensa de licitação"
 
 # JSON estruturado com graph_nodes e stats
 vectorgov hybrid -o json "licitação"
@@ -406,11 +419,11 @@ Busca exata por texto no corpo das normas. Diferente do `search` (semântico), o
 vectorgov grep "dispensa de licitação"
 
 # Filtrado por documento
-vectorgov grep "ETP" --doc LEI-14133-2021
+vectorgov grep --doc LEI-14133-2021 "ETP"
 
 # Controle de quantidade e contexto (v0.2.0)
-vectorgov grep "licitação" --max 10 --context-lines 5
-vectorgov grep "art. 75" --doc LEI-14133-2021 --max 3
+vectorgov grep --max 10 --context-lines 5 "licitação"
+vectorgov grep --doc LEI-14133-2021 --max 3 "art. 75"
 ```
 
 **Opções**:
@@ -428,14 +441,14 @@ com Reciprocal Rank Fusion (RRF).
 ```bash
 # Busca merged (ambos backends ativos por padrão)
 vectorgov merged "Modalidades de licitação"
-vectorgov merged "Pesquisa de preços" --top-k 15
+vectorgov merged --top-k 15 "Pesquisa de preços"
 
 # Filtro por documento (v0.2.1)
-vectorgov merged "art. 75" --doc LEI-14133-2021
+vectorgov merged --doc LEI-14133-2021 "art. 75"
 
 # Controle granular de backends (v0.2.1)
-vectorgov merged "dispensa" --no-filesystem    # apenas busca semântica
-vectorgov merged "licitação" --no-hybrid       # apenas índice curado
+vectorgov merged --no-filesystem "dispensa"    # apenas busca semântica
+vectorgov merged --no-hybrid "licitação"       # apenas índice curado
 ```
 
 **Opções**:
@@ -483,12 +496,12 @@ vectorgov fs-search "art. 75 da Lei 14.133"
 vectorgov fs-search "pregão eletrônico"
 
 # Modo específico
-vectorgov fs-search "dispensa" --mode index    # só busca indexada
-vectorgov fs-search "art. 75" --mode grep      # só busca textual
-vectorgov fs-search "ETP" --mode both          # índice + textual combinados
+vectorgov fs-search --mode index "dispensa"    # só busca indexada
+vectorgov fs-search --mode grep "art. 75"      # só busca textual
+vectorgov fs-search --mode both "ETP"          # índice + textual combinados
 
 # Filtrar por documento
-vectorgov fs-search "art. 75" --doc LEI-14133-2021 --output json
+vectorgov fs-search --doc LEI-14133-2021 --output json "art. 75"
 ```
 
 **Opções**:
@@ -511,13 +524,13 @@ Gera bloco completo (busca + system prompt) pronto para colar em LLMs. O comando
 vectorgov context "Quando posso usar dispensa de licitação?"
 
 # Formato messages (JSON OpenAI-compatible)
-vectorgov context "ETP" --format messages
+vectorgov context --format messages "ETP"
 
 # Com busca inteligente (smart-search)
-vectorgov context "pregão eletrônico" --smart
+vectorgov context --smart "pregão eletrônico"
 
 # Com system prompt específico
-vectorgov context "pesquisa de preços" --prompt detailed
+vectorgov context --prompt detailed "pesquisa de preços"
 ```
 
 Formatos: `raw` (padrão, texto puro), `messages` (JSON OpenAI), `clipboard`
@@ -614,7 +627,7 @@ Todos os comandos de busca suportam: `--output table` (padrão), `--output json`
 ### LLM (otimizado para IAs, v0.2.3)
 
 ```bash
-vectorgov search "O que é ETP?" --output llm
+vectorgov search --output llm "O que é ETP?"
 ```
 
 ```
@@ -632,7 +645,7 @@ Texto puro, sem escapes ANSI, sem JSON. Economiza ~40% de tokens vs `--raw`.
 ### Tabela (padrão para search)
 
 ```bash
-vectorgov search "O que é ETP?" --output table
+vectorgov search --output table "O que é ETP?"
 ```
 
 ```
@@ -650,7 +663,7 @@ Total: 5 | Latência: 1234ms | Cache: Não
 ### JSON
 
 ```bash
-vectorgov search "O que é ETP?" --output json
+vectorgov search --output json "O que é ETP?"
 ```
 
 ```json
@@ -685,10 +698,10 @@ vectorgov search -o llm "ETP"
 vectorgov context -o llm "dispensa de licitação"
 
 # Salvar JSON em arquivo
-vectorgov search "licitação" --raw > resultados.json
+vectorgov search --raw "licitação" > resultados.json
 
 # Grep exato em documento específico
-vectorgov grep "pregão eletrônico" --doc LEI-14133-2021 -o json
+vectorgov grep --doc LEI-14133-2021 -o json "pregão eletrônico"
 ```
 
 ### Integração em Python (recomendado para aplicações)
@@ -728,7 +741,7 @@ QUERY_ID=$(vectorgov search --raw "ETP" | jq -r '.query_id')
 vectorgov feedback send $QUERY_ID --like
 
 # Hybrid: extrair apenas artigos citados via grafo
-vectorgov hybrid "critérios de julgamento" --hops 2 --raw | jq '.cited_expansion'
+vectorgov hybrid --hops 2 --raw "critérios de julgamento" | jq '.cited_expansion'
 
 # Batch lookup: listar todas as URLs de evidência
 vectorgov lookup --raw "Art. 75, Art. 18 e Art. 33 da Lei 14.133" | jq -r '.results[].evidence_url'

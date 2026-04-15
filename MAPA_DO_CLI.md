@@ -134,22 +134,22 @@ vectorgov-cli/
 
 | Comando | Descrição | Exemplo | Flags principais |
 |---------|-----------|---------|------------------|
-| `search` | Busca semântica (filtros client-side) | `vectorgov search "dispensa" --tipo LEI --ano 2021` | `--top-k`, `--mode`, `--tipo`, `--ano`, `--doc`, `--cache` |
+| `search` | Busca semântica (filtros client-side) | `vectorgov search --tipo LEI --ano 2021 "dispensa"` | `--top-k`, `--mode`, `--tipo`, `--ano`, `--doc`, `--cache` |
 | `smart-search` | Busca inteligente MOC v4 com confiança | `vectorgov smart-search "Quando o ETP pode ser dispensado?"` | `--cache`, `--output` |
-| `hybrid` | Busca semântica + grafo normativo | `vectorgov hybrid "Critérios de julgamento" --hops 2` | `--top-k`, `--hops`, `--graph-expansion`, `--token-budget` |
+| `hybrid` | Busca semântica + grafo normativo | `vectorgov hybrid --hops 2 "Critérios de julgamento"` | `--top-k`, `--hops`, `--graph-expansion`, `--token-budget` |
 | `lookup` | Consulta artigo/dispositivo por referência legal (suporta batch) | `vectorgov lookup "Art. 75 da Lei 14.133"` | `--parent/--no-parent`, `--siblings/--no-siblings`, `--pipe`, `-o text/json/llm`, `--raw` |
-| `grep` | Busca exata por texto | `vectorgov grep "dispensa" --max 10 --context-lines 5` | `--doc`, `--max/-n`, `--context-lines/-C` |
-| `merged` | Busca dual-path (semântica + curado, RRF) | `vectorgov merged "licitação" --no-filesystem` | `--top-k`, `--doc`, `--no-hybrid`, `--no-filesystem`, `--token-budget` |
-| `fs-search` | Busca no índice curado | `vectorgov fs-search "art. 75 da Lei 14.133" --mode grep` | `--doc`, `--top-k`, `--mode` (auto/index/grep/both) |
+| `grep` | Busca exata por texto | `vectorgov grep --max 10 --context-lines 5 "dispensa"` | `--doc`, `--max/-n`, `--context-lines/-C` |
+| `merged` | Busca dual-path (semântica + curado, RRF) | `vectorgov merged --no-filesystem "licitação"` | `--top-k`, `--doc`, `--no-hybrid`, `--no-filesystem`, `--token-budget` |
+| `fs-search` | Busca no índice curado | `vectorgov fs-search --mode grep "art. 75 da Lei 14.133"` | `--doc`, `--top-k`, `--mode` (auto/index/grep/both) |
 | `read` | Lê texto canônico de documento/dispositivo | `vectorgov read LEI-14133-2021 --span ART-075` | `--span/-s` |
-| `explain` | Contexto completo de dispositivo (lookup + texto consolidado) | `vectorgov explain "Art. 75 da Lei 14.133" --output llm` | `--output` (default: llm) |
+| `explain` | Contexto completo de dispositivo (lookup + texto consolidado) | `vectorgov explain --output llm "Art. 75 da Lei 14.133"` | `--output` (default: llm) |
 
 ### Comandos de Contexto para LLMs
 
 | Comando | Descrição | Exemplo |
 |---------|-----------|---------|
-| `context` | Bloco completo (busca + prompt) para LLMs | `vectorgov context "dispensa de licitação" --format messages` |
-| `tokens` | Estimativa de tokens | `vectorgov tokens "pesquisa de preços" --top-k 10` |
+| `context` | Bloco completo (busca + prompt) para LLMs | `vectorgov context --format messages "dispensa de licitação"` |
+| `tokens` | Estimativa de tokens | `vectorgov tokens --top-k 10 "pesquisa de preços"` |
 | `prompts list` | Lista system prompts disponíveis | `vectorgov prompts list` |
 | `prompts show` | Exibe system prompt completo | `vectorgov prompts show juridico --raw` |
 
@@ -219,7 +219,7 @@ vectorgov-cli/
 ### Busca Híbrida (Grafo)
 
 ```
-1. Usuário executa: vectorgov hybrid "critérios de julgamento" --hops 2
+1. Usuário executa: vectorgov hybrid --hops 2 "critérios de julgamento"
 2. main.py:hybrid() parseia argumentos
 3. VectorGov SDK faz busca semântica + expansão por grafo normativo
 4. API retorna evidence_direct + cited_expansion
@@ -229,7 +229,7 @@ vectorgov-cli/
 ### Context (Bloco LLM)
 
 ```
-1. Usuário executa: vectorgov context "dispensa de licitação" --format messages
+1. Usuário executa: vectorgov context --format messages "dispensa de licitação"
 2. main.py:context() parseia argumentos
 3. SDK busca resultados (search ou smart-search se --smart)
 4. SDK busca system prompt (prompts show)
@@ -241,20 +241,20 @@ vectorgov-cli/
 
 ```bash
 # Busca → jq → processamento
-vectorgov search "ETP" --raw | jq '.hits[0].text'
+vectorgov search --raw "ETP" | jq '.hits[0].text'
 
 # Busca → salvar arquivo
-vectorgov search "licitação" --output json > resultados.json
+vectorgov search --output json "licitação" > resultados.json
 
 # Busca → obter query_id → feedback
-QUERY_ID=$(vectorgov search "ETP" --raw | jq -r '.query_id')
+QUERY_ID=$(vectorgov search --raw "ETP" | jq -r '.query_id')
 vectorgov feedback send $QUERY_ID --like
 
 # Contexto completo para pipe em LLM
-vectorgov context "ETP" --format messages --raw | jq '.messages'
+vectorgov context --format messages --raw "ETP" | jq '.messages'
 
 # Hybrid → extrair artigos citados via grafo
-vectorgov hybrid "critérios" --raw | jq '.cited_expansion[].span_id'
+vectorgov hybrid --raw "critérios" | jq '.cited_expansion[].span_id'
 ```
 
 ---
@@ -327,10 +327,10 @@ dependencies = [
 vectorgov search "O que é ETP?"
 
 # Com mais resultados
-vectorgov search "pesquisa de preços" --top-k 10
+vectorgov search --top-k 10 "pesquisa de preços"
 
 # Modo preciso (mais lento, mais acurado)
-vectorgov search "licitação" --mode precise
+vectorgov search --mode precise "licitação"
 ```
 
 ### Busca Inteligente (Smart Search)
@@ -340,7 +340,7 @@ vectorgov search "licitação" --mode precise
 vectorgov smart-search "Quando o ETP pode ser dispensado?"
 
 # Com cache (respostas frequentes)
-vectorgov smart-search "pesquisa de preços" --cache
+vectorgov smart-search --cache "pesquisa de preços"
 ```
 
 ### Busca Híbrida (Grafo)
@@ -350,7 +350,7 @@ vectorgov smart-search "pesquisa de preços" --cache
 vectorgov hybrid "Critérios de julgamento em licitações"
 
 # Com 2 hops de profundidade no grafo
-vectorgov hybrid "Dispensa de licitação" --hops 2 --top-k 15
+vectorgov hybrid --hops 2 --top-k 15 "Dispensa de licitação"
 ```
 
 ### Lookup, Explain e Grep
@@ -361,11 +361,11 @@ vectorgov lookup "Art. 75 da Lei 14.133"
 vectorgov lookup "Art. 24, § 2º da Lei 14.133/2021"
 
 # Contexto completo de um artigo (lookup + texto consolidado)
-vectorgov explain "Art. 75 da Lei 14.133" --output llm
+vectorgov explain --output llm "Art. 75 da Lei 14.133"
 
 # Busca textual exata
 vectorgov grep "dispensa de licitação"
-vectorgov grep "ETP" --doc LEI-14.133-2021
+vectorgov grep --doc LEI-14.133-2021 "ETP"
 ```
 
 ### Contexto para LLMs (vibe coding)
@@ -375,30 +375,30 @@ vectorgov grep "ETP" --doc LEI-14.133-2021
 vectorgov context "Quando posso usar dispensa de licitação?"
 
 # Formato OpenAI messages (para uso programático)
-vectorgov context "ETP" --format messages
+vectorgov context --format messages "ETP"
 
 # Com busca inteligente + prompt específico
-vectorgov context "pesquisa de preços" --smart --prompt detailed
+vectorgov context --smart --prompt detailed "pesquisa de preços"
 ```
 
 ### Saída JSON para Scripts
 
 ```bash
 # JSON formatado
-vectorgov search "ETP" --output json
+vectorgov search --output json "ETP"
 
 # JSON raw (para pipes)
-vectorgov search "ETP" --raw | jq '.hits | length'
+vectorgov search --raw "ETP" | jq '.hits | length'
 ```
 
 ### Estimativa de Tokens
 
 ```bash
 # Estima tokens antes de usar LLM
-vectorgov tokens "O que é ETP?" --top-k 5
+vectorgov tokens --top-k 5 "O que é ETP?"
 
 # Comparação com limites de modelos
-vectorgov tokens "pesquisa de preços" --output json
+vectorgov tokens --output json "pesquisa de preços"
 ```
 
 ### Auditoria e Quota
