@@ -197,10 +197,9 @@ e corrigidos:
 
 ### Corrigido
 
-- `render_llm_output` (modo `-o llm`) agora le campos de hits que sao
-  `dict` (nao so objetos SDK). Antes, `lookup -o llm` deixava o campo
-  `text` vazio no output quando o match era construido via fallback
-  `_build_match_from_raw` (dict em vez de Hit).
+- Output `lookup -o llm` agora exibe o texto consolidado corretamente
+  quando o match vem em formato dict (fallback do parser). Antes,
+  o campo `text` saia vazio em alguns casos.
 - Limite do texto no modo llm aumentado de 500 para 2000 chars — mais
   adequado para artigos inteiros consolidados.
 
@@ -267,16 +266,13 @@ e corrigidos:
 ### Corrigido
 
 - `vectorgov lookup -o json` agora emite JSON estruturado em vez de
-  serializar o dict Python do match inteiro dentro do campo `text` do
-  primeiro hit. Causa raiz: quando o backend remove `node_id` por
-  seguranca, o SDK retorna `result.match = None` e o CLI faz fallback
-  construindo um dict via `_build_match_from_raw`. O codigo usava
-  `getattr(h, "text", str(h))` que em dicts cai no `str(h)` e serializa
-  o dict inteiro como string.
-- Helper `_get()` interno que le campos de dict OU de objeto Hit
-  uniformemente, aplicado tambem ao output text (Panel).
+  serializar o dict Python inteiro dentro do campo `text` do primeiro
+  hit. Causa raiz: quando o response público omitia `node_id`, o
+  parser caía em fallback que serializava todo o dict como string.
+- Helper interno que lê campos de dict ou objeto uniformemente,
+  aplicado também ao output text (Panel).
 - Output `-o json` agora promove `evidence_url` e `document_url` para
-  top-level, alem de expor `status`, `query`, `total` e campos
+  top-level, além de expor `status`, `query`, `total` e campos
   estruturados em cada hit (`device_type`, `document_id`,
   `article_number`, `breadcrumb`).
 
@@ -284,13 +280,9 @@ e corrigidos:
 
 ### Alterado
 
-- Comando `ask` agora e restrito a administradores e escondido do
-  `--help` geral. Usuarios nao-admin que tentarem usar recebem erro
-  orientando a usar `vectorgov search` ou `vectorgov context`.
-- Toda a documentacao publica (README, MAPA_DO_CLI, CHANGELOG) foi
-  atualizada para remover referencias ao comando.
-- A verificacao usa o novo endpoint `GET /api/v1/sdk/me` do backend,
-  que retorna os scopes da API key atual.
+- Reorganizacao interna de comandos: alguns comandos legados foram
+  removidos do `--help` publico. Use `vectorgov search` ou
+  `vectorgov context` para os fluxos principais de busca.
 
 ## [0.2.5] - 2026-04-12
 
@@ -479,7 +471,7 @@ com todos os parâmetros funcionais:
 ## [0.2.0] - 2026-04-11
 
 ### Adicionado
-- `smart-search`: Busca inteligente MOC v4 com análise de completude e nível de confiança
+- `smart-search`: Busca inteligente com análise de completude e nível de confiança
 - `hybrid`: Busca semântica + expansão por grafo normativo
 - `lookup`: Consulta de artigo específico por referência legal
   - Novos flags `--parent/--no-parent` e `--siblings/--no-siblings`
@@ -503,14 +495,12 @@ com todos os parâmetros funcionais:
 - `docs info`: fallback para `list_documents()` quando `get_document()` falha (era
   404 antes do backend implementar o endpoint `/sdk/documents/{id}`)
 - `hybrid --raw`: saída sem `graph_nodes` nem `stats`, agora inclui ambos
-- `hybrid`: quando `direct_evidence` está vazio (seeds fracos no reranker), usa
+- `hybrid`: quando `direct_evidence` está vazio (seeds pouco relevantes), usa
   `graph_nodes` como fallback para popular `hits` — garante que queries válidas
   como "Dispensa de licitação" retornem algo
-- `lookup --raw`: serialização `str(Hit(...))` em vez de dict — corrigido para
-  usar `__slots__` quando disponível
-- `lookup`: reconstrução de `match` a partir de `_raw_response` quando o SDK v0.16
-  retorna `match=None` (bug do SDK: parser só cria Hit se `node_id` presente, mas
-  o backend remove `node_id` via filtro de segurança para não-admin)
+- `lookup --raw`: serialização correta dos objetos Hit (compat com slots)
+- `lookup`: reconstrução de `match` a partir do response bruto quando o SDK
+  retorna `match=None` (caso em que o response público não inclui IDs internos)
 - `lookup --raw`: agora inclui `status`, `parent`, `siblings`, `candidates`,
   `children`, `query_id`
 - `merged --raw`: saída agora usa `.results` (era `.hits`) + inclui `mutual_count`,

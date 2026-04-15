@@ -1,735 +1,242 @@
 # VectorGov CLI
 
-Cliente de linha de comando para a API VectorGov - Busca semântica em legislação brasileira.
+**CLI para busca semântica em legislação brasileira** — projetado para humanos no terminal e agentes de IA via stdin/stdout.
 
-[![PyPI version](https://img.shields.io/pypi/v/vectorgov-cli.svg)](https://pypi.org/project/vectorgov-cli/)
-[![PyPI downloads](https://img.shields.io/pypi/dm/vectorgov-cli.svg)](https://pypi.org/project/vectorgov-cli/)
-[![Python versions](https://img.shields.io/pypi/pyversions/vectorgov-cli.svg)](https://pypi.org/project/vectorgov-cli/)
+[![PyPI version](https://badge.fury.io/py/vectorgov-cli.svg)](https://badge.fury.io/py/vectorgov-cli)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **Novo em 0.3.2** — zero truncamento de conteúdo em todos os formatos
-> de saída + TTY detection automática: quando stdout não é terminal
-> (pipe, LLM, CI/CD), o formato padrão vira `llm` automaticamente. A
-> tabela do `search` ganhou coluna `Norma` para identificar de qual
-> lei cada artigo veio. Veja o [CHANGELOG](CHANGELOG.md#032---2026-04-15).
->
-> **Novo em 0.3.1** — parsing GNU-style: flags e argumentos funcionam
-> em qualquer ordem (`search "ETP" --top-k 3` e `search --top-k 3 "ETP"`
-> fazem a mesma coisa).
-
-## Para LLMs e agentes de IA (v0.3.2+)
-
-Se voce e um LLM ou agente de IA usando o CLI do VectorGov em sessoes
-de vibe coding, estas features foram projetadas para voce:
-
-```bash
-# TTY detection automatica (0.3.2): se voce executa via subprocess
-# ou pipe, o CLI ja entrega formato llm automaticamente.
-vectorgov search "O que e ETP?"
-
-# Ou forcando explicitamente quando rodar em terminal real
-vectorgov search --output llm "O que e ETP?"
-
-# Definir como padrao para toda a sessao
-export VECTORGOV_OUTPUT=llm
-
-# Contexto completo de um artigo em uma unica chamada
-vectorgov explain --output llm "Art. 75 da Lei 14.133"
-
-# Batch: consultar multiplos artigos em 1 chamada HTTP
-printf "Art. 75 da Lei 14.133\nArt. 33 da Lei 14.133" | vectorgov lookup --raw --pipe
-```
-
-**Zero truncamento (0.3.2)**: todos os formatos de saida (`table`,
-`text`, `json`, `llm`, `markdown`) retornam texto integral dos
-artigos. Se voce quer menos dados, use `--top-k N`. Antes da 0.3.2,
-o default `table` cortava o texto em 95 caracteres — problema que
-impedia LLMs de ler o conteudo completo das normas.
-
-**TTY detection (0.3.2)**: quando stdout nao e um terminal (pipe,
-redirect, subprocess de agente, CI/CD), o CLI detecta isso
-automaticamente e usa formato `llm` em vez de `table`. Voce nao
-precisa passar `--output llm` toda vez.
-
-O formato `llm` retorna texto puro com separadores `---` entre hits,
-headers `[N/total] Lei 14.133/2021, Art. 75 (score=0.99)` e links
-`EVIDENCE:` / `PDF:` por hit. Economiza ~40% de tokens comparado ao
-JSON (`--raw`) e elimina escapes ANSI do formato `text` que poluem
-o contexto do modelo.
+> **Novidades**:
+> - **0.3.6** — coluna "Referência" usa `hit.citation` (`Art. 75 da Lei 14.133/2021`) — formato jurídico brasileiro
+> - **0.3.5** — créditos exibidos no rodapé de todos os comandos pagos
+> - **0.3.2** — zero truncamento de conteúdo + TTY detection automática (pipes recebem `llm` por padrão)
+> - **0.3.1** — parsing GNU-style: flags e argumentos em qualquer ordem (`search "ETP" --top-k 3` ou `search --top-k 3 "ETP"`)
 
 ---
 
-## Provando a veracidade — evidence_url e document_url
-
-Todo comando de busca (`search`, `smart-search`, `hybrid`, `lookup`, `grep`,
-`merged`, `fs-search`) expõe dois campos de evidência em cada hit:
-
-- `evidence_url` — link para o trecho destacado visualmente na norma
-- `document_url` — link para baixar o PDF original do documento
-
-Ambos são URLs absolutas (prefixadas com `https://vectorgov.io`) e permanentes
-(não expiram). Você pode copiar, compartilhar e clicar direto.
-
-**Exemplo — output text mostra os links indentados abaixo de cada hit**:
-
-```bash
-$ vectorgov search --top-k 1 --output text "O que é ETP?"
-
-[1] IN 58/2022, Art. 3 (score: 0.987)
-I - Estudo Técnico Preliminar - ETP: documento constitutivo da primeira etapa
-do planejamento de uma contratação que caracteriza o interesse público
-envolvido e a sua melhor solução e dá base ao anteprojeto, ao termo de
-referência ou ao projeto básico a serem elaborados caso se conclua pela
-viabilidade da contratação;
-    Ver trecho: https://vectorgov.io/api/v1/evidence/IN-58-2022%23INC-003-I
-    Baixar PDF: https://vectorgov.io/api/v1/evidence/download/source/IN-58-2022
-```
-
-**Exemplo — `-o json` mostra JSON estruturado direto no terminal (sem ferramentas externas)**:
-
-```bash
-$ vectorgov search -o json --top-k 1 "ETP"
-{
-  "query": "ETP",
-  "total": 1,
-  "hits": [
-    {
-      "text": "I - Estudo Técnico Preliminar...",
-      "article_number": "3",
-      "document_id": "IN-58-2022",
-      "score": 0.987,
-      "evidence_url": "https://vectorgov.io/api/v1/evidence/IN-58-2022%23INC-003-I",
-      "document_url": "https://vectorgov.io/api/v1/evidence/download/source/IN-58-2022"
-    }
-  ]
-}
-```
-
-**Uso programático em Python — SDK oficial (recomendado, não precisa de CLI)**:
-
-```python
-from vectorgov import VectorGov
-
-vg = VectorGov(api_key="vg_xxx")
-results = vg.search("dispensa de licitação", top_k=5)
-
-for hit in results.hits:
-    print(f"- {hit.document_id}, Art. {hit.article_number} → {hit.evidence_url}")
-```
-
-**Uso avançado em scripts shell (requer `jq`)**:
-
-Para filtragem/transformação de JSON em pipelines bash — útil para automação e
-CI/CD — use [`jq`](https://jqlang.github.io/jq/). Instalação opcional:
-`choco install jq` (Windows), `brew install jq` (macOS), `apt install jq` (Linux).
-
-```bash
-# Extrair apenas URLs de evidência (requer jq)
-vectorgov search --raw "dispensa de licitação" | jq -r '.hits[] | "- \(.document_id), Art. \(.article_number) → \(.evidence_url)"'
-```
-
-> **Dica**: na maioria dos casos `-o json`, `-o llm` ou o SDK Python já resolvem.
-> Só use `jq` se precisar encadear em pipelines shell complexos.
-
----
-
-## Resumo de Comandos
-
-| Comando | Descrição |
-|---------|-----------|
-| `search` | Busca semântica em legislação (filtros: `--tipo`, `--ano`, `--doc`) |
-| `smart-search` | Busca inteligente MOC v4 com análise de confiança |
-| `hybrid` | Busca semântica + expansão por grafo normativo |
-| `lookup` | Consulta de artigo específico por referência legal |
-| `grep` | Busca exata por texto no corpo das normas |
-| `merged` | Busca dual-path: semântica + índice curado (RRF) |
-| `fs-search` | Busca no índice curado — texto exato |
-| `read` | Lê texto canônico de documento/dispositivo |
-| `explain` | Contexto completo de um dispositivo (lookup + texto consolidado) |
-| `context` | Bloco completo (busca + prompt) pronto para LLMs |
-| `tokens` | Estimativa de tokens antes de usar LLM |
-| `prompts list/show` | System prompts disponíveis para LLMs |
-| `docs list/info` | Lista e detalha documentos disponíveis |
-| `audit logs/stats` | Histórico e estatísticas de uso da API |
-| `quota` | Consulta de uso do plano (smart_search + créditos) |
-| `feedback send` | Envia like/dislike para uma busca |
-| `auth login/status/logout` | Autenticação |
-| `config set/get/list/delete` | Configurações |
-| `init` | Inicializa projeto com arquivos para ferramentas AI |
-
-## Instalação
+## ⚡ Quickstart (1 minuto)
 
 ```bash
 pip install vectorgov-cli
-```
-
-## Configuração
-
-```bash
-# Configure sua API key
-vectorgov auth login
-
-# Ou via variável de ambiente
-export VECTORGOV_API_KEY="vg_sua_chave"
-```
-
-## Uso
-
-### Busca
-
-```bash
-# Busca simples
+vectorgov auth login              # ou: export VECTORGOV_API_KEY=vg_...
 vectorgov search "O que é ETP?"
-
-# Com opções
-vectorgov search "pesquisa de preços" --top-k 10 --mode precise
-
-# Com filtros (v0.2.1)
-vectorgov search "dispensa" --tipo LEI --ano 2021
-vectorgov search "art. 75" --doc LEI-14133-2021
-vectorgov search "licitação" --tipo IN --ano 2022 --top-k 15
-
-# Saída em JSON estruturado no terminal (com syntax highlight)
-vectorgov search "licitação" -o json
-
-# JSON bruto para pipes shell (requer jq — veja seção "Automação shell")
-vectorgov search "licitação" --raw | jq '.hits[0].text'
-```
-
-**Opções**:
-- `--top-k/-k` (1-20, padrão: 5) — quantidade de resultados
-- `--mode/-m` (fast/balanced/precise) — modo de busca
-- `--tipo/-t` (LEI, DECRETO, IN, PORTARIA, AC) — filtro por tipo (auto-uppercase)
-- `--ano/-a` (ex: 2021) — filtro por ano
-- `--doc/-d` (ex: LEI-14133-2021) — filtro por document_id específico
-- `--cache` — usar cache semântico
-- `--output/-o` (table/json/text/markdown)
-- `--raw` — saída JSON bruto para piping
-
-### Contexto para LLMs
-
-Use o comando `context` para gerar um bloco completo (busca + system prompt) pronto para colar em qualquer LLM (OpenAI, Anthropic, Google, etc).
-
-```bash
-# Bloco de contexto em texto puro
-vectorgov context "O que é ETP?"
-
-# Formato messages (OpenAI-compatible)
-vectorgov context "critérios de julgamento" --format messages
-```
-
-**Exemplo de integração com OpenAI:**
-
-```python
-from vectorgov import VectorGov
-from openai import OpenAI
-
-vg = VectorGov(api_key="vg_xxx")
-openai = OpenAI()
-
-results = vg.search("O que é ETP?", top_k=5)
-
-response = openai.chat.completions.create(
-    model="gpt-4o",
-    messages=results.to_messages("O que é ETP?")
-)
-print(response.choices[0].message.content)
-```
-
-### Feedback
-
-```bash
-# Apos uma busca, use o query_id para feedback
-vectorgov feedback send abc123def456 --like
-vectorgov feedback send abc123def456 --dislike
-```
-
-### Estimativa de Tokens
-
-Estima quantos tokens uma busca consumiria, util para planejar uso com LLMs.
-
-```bash
-# Estimativa basica
-vectorgov tokens "O que e ETP?"
-
-# Com mais resultados
-vectorgov tokens "pesquisa de precos" --top-k 10
-
-# Saida em JSON
-vectorgov tokens "licitacao" --output json
-```
-
-Exemplo de saida:
-
-```
-Estimativa de Tokens
-+-----------------+------------+---------------------------+
-| Componente      |     Tokens | Descricao                 |
-+-----------------+------------+---------------------------+
-| Contexto        |      1,234 | 5 hits da busca           |
-| System Prompt   |        200 | Instrucoes do sistema     |
-| Query           |          5 | Pergunta do usuario       |
-|-----------------|------------|---------------------------|
-| Total           |      1,439 | 5,432 caracteres          |
-+-----------------+------------+---------------------------+
-
-Comparacao com limites de modelos:
-  GPT-4o: OK 1.1% (1,439/128,000)
-  GPT-4o-mini: OK 1.1% (1,439/128,000)
-  Claude 3.5 Sonnet: OK 0.7% (1,439/200,000)
-  Gemini 2.0 Flash: OK 0.1% (1,439/1,000,000)
-```
-
-### Documentos
-
-```bash
-# Lista documentos disponíveis
-vectorgov docs list
-
-# Paginação (v0.2.1)
-vectorgov docs list --page 1 --limit 20
-vectorgov docs list --page 2 --limit 20
-
-# Saída em JSON
-vectorgov docs list --output json
-
-# Informações de um documento
-vectorgov docs info LEI-14133-2021
-vectorgov docs info IN-65-2021
-```
-
-**Opções `docs list`**:
-- `--page/-p` (padrão: 1) — página a exibir
-- `--limit/-l` (1-100, padrão: 50) — itens por página
-- `--output/-o` (table/json)
-
-### Smart Search
-
-Busca inteligente MOC v4 com análise de completude e nível de confiança (ALTO/MEDIO/BAIXO).
-
-```bash
-# Busca inteligente
-vectorgov smart-search "Quando o ETP pode ser dispensado?"
-
-# Saída em JSON
-vectorgov smart-search "critérios de julgamento" --output json
-
-# Com cache
-vectorgov smart-search "pesquisa de preços" --cache
-```
-
-### Hybrid
-
-Busca semântica enriquecida com expansão por grafo normativo. Retorna
-evidências diretas + artigos citados (expansão via grafo).
-
-```bash
-# Busca híbrida
-vectorgov hybrid "Critérios de julgamento em licitações"
-
-# Com mais hops e resultados
-vectorgov hybrid "Dispensa de licitação" --hops 2 --top-k 15
-
-# JSON estruturado com graph_nodes e stats
-vectorgov hybrid -o json "licitação"
-```
-
-**Opções**:
-- `--top-k/-k` (1-50, padrão: 10) — quantidade de resultados diretos
-- `--hops` (1 ou 2, padrão: 1) — saltos no grafo normativo
-- `--graph-expansion` (bidirectional/forward) — tipo de expansão
-- `--token-budget` — limite de tokens do contexto expandido
-- `--output/-o` (table/json/text)
-- `--raw` — inclui `graph_nodes` e `stats` no output
-
-**Comportamento v0.2.0**: quando a busca vetorial não retorna seeds relevantes
-(ex: termos fracos no reranker), o CLI usa automaticamente `graph_nodes` como
-fallback para popular `hits` — garante que queries legítimas como "Dispensa de
-licitação" retornem algo.
-
-### Lookup
-
-Consulta de dispositivo legal por referência em linguagem natural. Resolve
-referências como "Art. 75 da Lei 14.133", "§ 1º do Art. 33", "Inciso I do § 2
-do Art. 4", etc. Quando o dispositivo é um **artigo**, o retorno já vem com o
-texto completo consolidado (caput + incisos + parágrafos + alíneas).
-
-```bash
-# Referência completa (inclua o nome da lei na própria referência)
-vectorgov lookup "Art. 75 da Lei 14.133"
-vectorgov lookup "§ 1º do Art. 33 da Lei 14.133/2021"
-vectorgov lookup "Inciso I do § 2 do Art. 4 da IN 67/2021"
-
-# Controle de parent e siblings
-vectorgov lookup --no-parent "Art. 1 da Lei 14.133"
-vectorgov lookup --no-siblings "Art. 75 da Lei 14.133"
-```
-
-**Opções**:
-- `--parent/--no-parent` (padrão: --parent) — incluir dispositivo pai
-- `--siblings/--no-siblings` (padrão: --siblings) — incluir dispositivos irmãos
-- `--output/-o` (text/json/llm) — formato de saída
-- `--raw` — JSON bruto sem formatação (para pipes)
-- `--pipe` — lê referências de stdin (uma por linha, batch)
-
-#### Formatos de saída
-
-O `lookup` suporta 4 formatos de saída para atender usos diferentes:
-
-```bash
-# 1. text (padrão) — Panels Rich com bordas e cores
-vectorgov lookup "Art. 11 da Lei 14.133"
-
-# 2. json — JSON estruturado com syntax highlight no console
-vectorgov lookup -o json "Art. 11 da Lei 14.133"
-
-# 3. llm — Texto puro otimizado para colar em LLMs (sem ANSI/Rich)
-vectorgov lookup -o llm "Art. 11 da Lei 14.133"
-
-# 4. raw — JSON bruto para pipes e scripts (com jq)
-vectorgov lookup --raw "Art. 11 da Lei 14.133" | jq '.match.text'
-```
-
-Todos os formatos incluem, quando disponível:
-- Texto do dispositivo (consolidado para artigos)
-- `evidence_url` — link para o trecho destacado na norma
-- `document_url` — link para download do PDF original
-- `nota_especialista` — comentário do especialista jurídico (curadoria SPEC 1C)
-- `jurisprudencia_tcu` — jurisprudência relacionada (quando presente)
-
-No formato **text**, nota e jurisprudência aparecem em Panels dedicados
-(amarelo e magenta) abaixo dos hits. No **llm**, aparecem em seções com
-separador `---`. No **json** e **raw**, são campos top-level.
-
-#### Batch lookup (múltiplas referências)
-
-O lookup suporta batch de 2 formas:
-
-```bash
-# 1. Auto-split: múltiplas refs separadas por vírgula, ";" ou " e "
-vectorgov lookup "Art. 75 da Lei 14.133 e Art. 18 da Lei 14.133"
-vectorgov lookup "inc.I do § 2 do art. 4 da IN 67/2021, inc.II do § 2 do art. 4 da IN 67/2021"
-
-# 2. Via stdin com --pipe (uma ref por linha, até 20)
-printf "Art. 75 da Lei 14.133\nArt. 33 da Lei 14.133" | vectorgov lookup --pipe
-
-# Batch em formato llm (bom para colar em LLM)
-vectorgov lookup -o llm "Art. 11, Art. 18 e Art. 75 da Lei 14.133"
-
-# Batch em JSON estruturado para ler no terminal
-vectorgov lookup -o json "Art. 11, Art. 18 da Lei 14.133"
-
-# Batch em raw JSON para automação shell (requer jq)
-vectorgov lookup --raw "Art. 11, Art. 18 da Lei 14.133" | jq '.results[].evidence_url'
-```
-
-**Nota**: o flag `--doc` foi removido na v0.2.1. O SDK `vg.lookup()` não aceita
-`document_id` separado — para filtrar por documento, inclua o nome na própria
-referência (ex: `"Art. 75 da Lei 14.133"` em vez de `"Art. 75" --doc ...`).
-
-### Grep
-
-Busca exata por texto no corpo das normas. Diferente do `search` (semântico), o `grep` procura ocorrências literais.
-
-```bash
-# Busca textual exata
-vectorgov grep "dispensa de licitação"
-
-# Filtrado por documento
-vectorgov grep "ETP" --doc LEI-14133-2021
-
-# Controle de quantidade e contexto (v0.2.0)
-vectorgov grep "licitação" --max 10 --context-lines 5
-vectorgov grep "art. 75" --doc LEI-14133-2021 --max 3
-```
-
-**Opções**:
-- `--doc/-d` — filtrar por documento específico
-- `--max/-n` (1-50, padrão: 20) — máximo de resultados
-- `--context-lines/-C` (0-10, padrão: 3) — linhas de contexto ao redor do match
-- `--output/-o` (table/json/text)
-- `--raw` — JSON bruto
-
-### Merged
-
-Busca dual-path combinando busca semântica + índice curado
-com Reciprocal Rank Fusion (RRF).
-
-```bash
-# Busca merged (ambos backends ativos por padrão)
-vectorgov merged "Modalidades de licitação"
-vectorgov merged "Pesquisa de preços" --top-k 15
-
-# Filtro por documento (v0.2.1)
-vectorgov merged "art. 75" --doc LEI-14133-2021
-
-# Controle granular de backends (v0.2.1)
-vectorgov merged "dispensa" --no-filesystem    # apenas busca semântica
-vectorgov merged "licitação" --no-hybrid       # apenas índice curado
-```
-
-**Opções**:
-- `--top-k/-k` (1-50, padrão: 10) — quantidade de resultados
-- `--doc/-d` — filtrar por documento específico
-- `--token-budget` — limite de tokens para contexto
-- `--no-hybrid` — desabilita busca semântica (usa só índice curado)
-- `--no-filesystem` — desabilita índice curado (usa só busca semântica)
-- `--output/-o` (table/json/text)
-- `--raw` — inclui `mutual_count`, `hybrid_count`, `filesystem_count` no output
-
-### Read
-
-Lê o texto canônico completo de um documento ou dispositivo específico (v0.2.1).
-
-```bash
-# Documento inteiro
-vectorgov read LEI-14133-2021
-
-# Apenas um artigo específico
-vectorgov read LEI-14133-2021 --span ART-075
-vectorgov read LEI-14133-2021 --span PAR-033-1
-
-# JSON estruturado
-vectorgov read LEI-14133-2021 --span ART-075 -o json
-```
-
-**Opções**:
-- `--span/-s` (ex: ART-075, PAR-033-1, INC-005-I) — dispositivo específico
-- `--output/-o` (text/json)
-- `--raw` — JSON bruto
-
-**Diferença para `lookup`**: `lookup` resolve referências em linguagem natural
-("Art. 75 da Lei 14.133"); `read` usa IDs canônicos diretamente. Use `read`
-quando já souber o `document_id` e `span_id` exatos (ex: após um `lookup`).
-
-### Fs-search
-
-Busca no índice curado — alternativa ao `search` vetorial.
-Ideal para termos exatos e referências legais precisas (v0.2.0).
-
-```bash
-# Busca simples
-vectorgov fs-search "art. 75 da Lei 14.133"
-vectorgov fs-search "pregão eletrônico"
-
-# Modo específico
-vectorgov fs-search "dispensa" --mode index    # só busca indexada
-vectorgov fs-search "art. 75" --mode grep      # só busca textual
-vectorgov fs-search "ETP" --mode both          # índice + textual combinados
-
-# Filtrar por documento
-vectorgov fs-search "art. 75" --doc LEI-14133-2021 --output json
-```
-
-**Opções**:
-- `--doc/-d` — filtrar por documento
-- `--top-k/-k` (1-50, padrão: 10) — quantidade de resultados
-- `--mode/-m` (auto/index/grep/both, padrão: auto) — estratégia de busca
-- `--output/-o` (table/json/text)
-- `--raw` — JSON bruto
-
-**Diferença para `search`**: `search` é busca vetorial (embeddings), `fs-search`
-é busca textual no índice curado. Use `fs-search` quando souber o termo exato
-ou quer citar uma norma por referência literal.
-
-### Context
-
-Gera bloco completo (busca + system prompt) pronto para colar em LLMs. O comando principal para vibe coding.
-
-```bash
-# Bloco de contexto em texto puro (padrão)
-vectorgov context "Quando posso usar dispensa de licitação?"
-
-# Formato messages (JSON OpenAI-compatible)
-vectorgov context "ETP" --format messages
-
-# Com busca inteligente (smart-search)
-vectorgov context "pregão eletrônico" --smart
-
-# Com system prompt específico
-vectorgov context "pesquisa de preços" --prompt detailed
-```
-
-Formatos: `raw` (padrão, texto puro), `messages` (JSON OpenAI), `clipboard`
-
-### Audit
-
-Histórico de requisições e estatísticas de uso da API.
-
-```bash
-# Logs de requisições (últimos 30 dias)
-vectorgov audit logs --days 30 --limit 50
-
-# Estatísticas agregadas (últimos 7 dias)
-vectorgov audit stats --days 7
-```
-
-### Quota
-
-Consulta de uso do plano: cotas de smart_search e créditos restantes.
-
-```bash
-# Ver quota do plano atual
-vectorgov quota
-
-# Saída em JSON
-vectorgov quota --output json
-```
-
-### Prompts
-
-System prompts disponíveis para uso com LLMs.
-
-```bash
-# Lista prompts disponíveis
-vectorgov prompts list
-
-# Exibe um prompt completo
-vectorgov prompts show juridico --raw
-```
-
-### Init
-
-Inicializa projeto com arquivos de configuração para ferramentas AI (Claude Code, Cursor, Codex).
-
-```bash
-# Tudo de uma vez
-vectorgov init --all
-
-# Apenas CLAUDE.md
-vectorgov init --claude
-
-# Apenas .cursorrules
-vectorgov init --cursor
-
-# Apenas AGENTS.md
-vectorgov init --codex
-```
-
-### Configuração
-
-```bash
-# Ver configuração atual
-vectorgov config list
-
-# Definir configuração
-vectorgov config set default_mode precise
-vectorgov config set default_top_k 10
-
-# Ver valor específico
-vectorgov config get api_key
-
-# Remover configuração
-vectorgov config delete default_mode
-```
-
-### Autenticação
-
-```bash
-# Login (salva API key)
-vectorgov auth login
-
-# Status da autenticação
-vectorgov auth status
-
-# Logout (remove API key)
-vectorgov auth logout
-```
-
-## Formatos de Saída
-
-Todos os comandos de busca suportam: `--output table` (padrão), `--output json`,
-`--output text`, `--output llm` (v0.2.3) e `--raw` (JSON bruto para pipes).
-
-### LLM (otimizado para IAs, v0.2.3)
-
-```bash
-vectorgov search "O que é ETP?" --output llm
 ```
 
 ```
-[1/5] IN-58-2022, Art. 3 (score: 0.987)
-I - Estudo Técnico Preliminar - ETP: documento constitutivo...
-EVIDENCE: https://vectorgov.io/api/v1/evidence/IN-58-2022%23INC-003-I
-PDF: https://vectorgov.io/api/v1/evidence/download/source/IN-58-2022
+[1/5] Art. 18 da Lei 14.133/2021 (score: 0.97)
+Art. 18. A fase preparatória do processo licitatório é caracterizada pelo planejamento ...
+EVIDENCE: https://vectorgov.io/api/v1/evidence/leis%3ALEI-14133-2021%23ART-018
+PDF: https://vectorgov.io/api/v1/evidence/download/source/LEI-14133-2021
 ---
-[2/5] IN-65-2021, Art. 1 (score: 0.856)
-Esta Instrução Normativa dispõe sobre a elaboração...
 ```
 
-Texto puro, sem escapes ANSI, sem JSON. Economiza ~40% de tokens vs `--raw`.
+> 🤖 **Para LLMs e agentes**: defina `export VECTORGOV_OUTPUT=llm` e todos os comandos retornam texto puro otimizado (sem ANSI, ~40% menos tokens). Quando o stdout não é um terminal, o CLI **detecta automaticamente** e usa `llm` por padrão.
 
-### Tabela (padrão para search)
+---
+
+## 🌳 Qual comando usar?
+
+```mermaid
+graph TD
+    A[Quero consultar legislação] --> B{Sei a referência exata?<br/>Ex: 'Art. 75 da Lei 14.133'}
+    B -->|Sim| C[vectorgov lookup<br/>📌 referência legal]
+    B -->|Não| D{Que tipo de busca?}
+    D -->|Linguagem natural| E{Preciso de análise<br/>jurídica completa?}
+    D -->|Texto literal exato| F[vectorgov grep<br/>🔍 busca textual]
+    D -->|Sigla/termo curado| G[vectorgov fs-search<br/>📚 índice curado]
+    E -->|Não, só os artigos| H{Quero também<br/>artigos relacionados?}
+    E -->|Sim, com pareceres| I[vectorgov smart-search<br/>⚖️ análise premium 💰💰]
+    H -->|Sim, via grafo| J[vectorgov hybrid<br/>🕸️ semântica + grafo]
+    H -->|Não| K[vectorgov search<br/>🎯 semântica simples]
+    H -->|Quero máxima cobertura| L[vectorgov merged<br/>🌊 dual-path RRF]
+    K --> M{Quero o texto<br/>completo de um artigo?}
+    J --> M
+    M -->|Sim, sei o ID| N[vectorgov read]
+    M -->|Sim, sei a referência| O[vectorgov explain]
+    M -->|Quero contexto<br/>pronto para LLM| P[vectorgov context<br/>🤖 busca + prompt]
+```
+
+| Comando | Latência | Custo | Pra que serve |
+|---|---|---|---|
+| `vectorgov search` | 2-7s | 💰 | Busca semântica simples |
+| `vectorgov smart-search` | 5-18s | 💰💰 | Análise jurídica completa |
+| `vectorgov hybrid` | 3-10s | 💰 | Semântica + grafo de citações |
+| `vectorgov merged` | 2-5s | 💰 | Dual-path: hybrid + filesystem (RRF) |
+| `vectorgov lookup` | < 1s | 💰 | Resolve "Art. X da Lei Y" |
+| `vectorgov grep` | < 1s | 💰 | Busca textual literal |
+| `vectorgov fs-search` | < 1s | 💰 | Índice curado |
+| `vectorgov read` | < 1s | **free** | Lê texto canônico completo |
+
+> 🧭 **Decisão por caso de uso**: veja a [Cheat Sheet](docs/cheat-sheet.md) — 1 página com comparações detalhadas, padrões idiomáticos e troubleshooting.
+
+---
+
+## 📋 Os 20 comandos do CLI
+
+### 🔍 Busca (9)
+
+| Comando | O que faz |
+|---|---|
+| [`search`](docs/commands.md#search) | Busca semântica simples (3 modos: fast/balanced/precise) |
+| [`smart-search`](docs/commands.md#smart-search) | Análise jurídica completa com Juiz LLM (Premium 💰💰) |
+| [`hybrid`](docs/commands.md#hybrid) | Semântica + expansão por grafo de citações (1-2 hops) |
+| [`lookup`](docs/commands.md#lookup) | Resolve referência legal → dispositivo exato (com batch e pipe) |
+| [`grep`](docs/commands.md#grep) | Busca textual literal |
+| [`fs-search`](docs/commands.md#fs-search) | Índice curado determinístico |
+| [`merged`](docs/commands.md#merged) | hybrid + filesystem unificados via RRF |
+| [`read`](docs/commands.md#read) | Lê texto canônico completo (free) |
+| [`explain`](docs/commands.md#explain) | lookup + read em uma chamada |
+
+### 🤖 LLM helpers (3)
+
+| Comando | O que faz |
+|---|---|
+| [`context`](docs/commands.md#context) | Bloco completo (busca + prompt) pronto para LLM |
+| [`tokens`](docs/commands.md#tokens) | Estima tokens antes de mandar para LLM (free) |
+| [`prompts`](docs/commands.md#prompts) | System prompts pré-otimizados (list/show) |
+
+### 📊 Info & feedback (4)
+
+| Comando | O que faz |
+|---|---|
+| [`docs list/info`](docs/commands.md#docs) | Lista normas indexadas e mostra metadados (free) |
+| [`audit logs/stats`](docs/commands.md#audit) | Histórico e estatísticas de uso (free) |
+| [`quota`](docs/commands.md#quota) | Uso do plano e créditos restantes (free) |
+| [`feedback send`](docs/commands.md#feedback) | Like/dislike de resultado (free) |
+
+### 🛠️ Setup & config (4)
+
+| Comando | O que faz |
+|---|---|
+| [`auth login/status/logout`](docs/commands.md#auth) | Salva/consulta/remove API key |
+| [`config list/get/set/delete`](docs/commands.md#config) | Gerencia `~/.vectorgov/config.yaml` |
+| [`init`](docs/commands.md#init) | Cria arquivos AI (CLAUDE.md, .cursorrules, AGENTS.md) |
+| [`version`](docs/commands.md#version) | Mostra versão (`--version` ou `-V`) |
+
+> 📖 **Reference técnica completa**: cada comando com flags, formatos, exemplos avançados em [docs/commands.md](docs/commands.md).
+
+---
+
+## 🍳 Receitas comuns
+
+### Receita 1 — Buscar e colar em ChatGPT/Claude
 
 ```bash
-vectorgov search "O que é ETP?" --output table
+vectorgov context "Quando dispensar licitação?"
 ```
 
-```
-Resultados para: O que é ETP?
-Total: 5 | Latência: 1234ms | Cache: Não
+Gera bloco completo (busca + system prompt jurídico) pronto para colar em qualquer LLM.
 
-┏━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━┓
-┃ # ┃ Norma                ┃ Artigo ┃ Texto                                          ┃   Score ┃ Evidência    ┃
-┡━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━┩
-│ 1 │ IN 58/2022           │ 3      │ I - Estudo Técnico Preliminar - ETP: documento │   0.987 │ ver trecho   │
-│   │                      │        │ constitutivo da primeira etapa do planejamento │         │              │
-│   │                      │        │ de uma contratação...                          │         │              │
-│ 2 │ IN 65/2021           │ 1      │ Art. 1º Esta Instrução Normativa dispõe sobre  │   0.856 │ ver trecho   │
-│   │                      │        │ a elaboração...                                │         │              │
-└───┴──────────────────────┴────────┴────────────────────────────────────────────────┴─────────┴──────────────┘
-
-Fontes (2): IN 58/2022, IN 65/2021
-```
-
-### JSON
+### Receita 2 — Resolver referência legal
 
 ```bash
-vectorgov search "O que é ETP?" --output json
+vectorgov lookup "Art. 75 da Lei 14.133"
 ```
 
-```json
-{
-  "query": "O que é ETP?",
-  "total": 5,
-  "cached": false,
-  "latency_ms": 1234,
-  "hits": [
-    {
-      "text": "ETP - Estudo Técnico Preliminar...",
-      "article_number": "3",
-      "score": 0.892
-    }
-  ]
-}
-```
+Retorna o texto consolidado do artigo (caput + parágrafos + incisos).
 
-## Integração com Outros Comandos
-
-### Uso básico (sem dependências externas)
+### Receita 3 — Batch de referências
 
 ```bash
-# Ver resultados formatados no terminal (Panels Rich)
-vectorgov search "ETP"
-
-# Ver JSON estruturado com syntax highlight
-vectorgov search -o json "ETP"
-
-# Texto puro otimizado para colar em ChatGPT/Claude
-vectorgov search -o llm "ETP"
-vectorgov context -o llm "dispensa de licitação"
-
-# Salvar JSON em arquivo
-vectorgov search "licitação" --raw > resultados.json
-
-# Grep exato em documento específico
-vectorgov grep "pregão eletrônico" --doc LEI-14133-2021 -o json
+vectorgov lookup "Art. 75, Art. 18 e Art. 33 da Lei 14.133"
+# ou
+printf "Art. 75 da Lei 14.133\nArt. 33 da Lei 14.133" | vectorgov lookup --pipe
 ```
 
-### Integração em Python (recomendado para aplicações)
+### Receita 4 — Filtrar por norma específica
 
-Quando for consumir programaticamente, use o SDK oficial ao invés de fazer
-parse do output do CLI:
+```bash
+vectorgov search "credenciamento" --doc LEI-14133-2021 --top-k 10
+```
+
+### Receita 5 — Inicializar projeto AI
+
+```bash
+vectorgov init --all
+# Cria CLAUDE.md, .cursorrules, AGENTS.md
+```
+
+### Receita 6 — Estimar tokens antes do LLM
+
+```bash
+vectorgov tokens "dispensa de licitação" --top-k 10
+```
+
+### Receita 7 — Pipeline shell com jq
+
+```bash
+# Capturar query_id e mandar feedback
+QUERY_ID=$(vectorgov search --raw "ETP" | jq -r '.query_id')
+vectorgov feedback send $QUERY_ID --like
+```
+
+> 🍳 **Mais receitas**: [docs/recipes.md](docs/recipes.md) tem 20 fluxos completos.
+
+---
+
+## 📤 Formatos de saída
+
+Todos os comandos de busca suportam: `table` (padrão), `json`, `text`, `llm` e `--raw`.
+
+```bash
+vectorgov search "ETP"                        # table (interativo)
+vectorgov search "ETP" --output json          # JSON com syntax highlight
+vectorgov search "ETP" --output llm           # texto puro (otimizado para LLM)
+vectorgov search --raw "ETP" | jq '.hits[0]'  # JSON bruto para pipes
+```
+
+> 💡 **TTY detection**: o CLI detecta automaticamente quando o stdout não é um terminal (pipe, redirect, CI/CD) e usa `llm` por padrão. Não precisa configurar nada para integrar com agentes.
+
+---
+
+## 🌐 Variáveis de ambiente
+
+| Variável | Descrição |
+|---|---|
+| `VECTORGOV_API_KEY` | API key (alternativa a `auth login`) |
+| `VECTORGOV_OUTPUT` | Output padrão: `llm`, `table`, `json`, `text` |
+| `VECTORGOV_DEFAULT_MODE` | Modo padrão: `fast`, `balanced`, `precise` |
+| `VECTORGOV_DEFAULT_TOP_K` | Número padrão de resultados |
+
+## 📁 Arquivo de configuração
+
+`~/.vectorgov/config.yaml`:
+
+```yaml
+api_key: vg_sua_chave
+default_mode: balanced
+default_top_k: 5
+default_output: table       # ou llm, json, text
+```
+
+---
+
+## 🤖 Para LLMs e agentes
+
+Esta seção é específica para agentes de IA e LLMs que vão consumir o CLI via stdin/stdout.
+
+### Setup recomendado
+
+```bash
+# Defina o formato padrão como 'llm' para a sessão
+export VECTORGOV_OUTPUT=llm
+
+# Ou inicialize um projeto AI completo
+vectorgov init --all
+```
+
+### Características projetadas para agentes
+
+- **TTY detection**: `vectorgov search "ETP" | tee out.txt` automaticamente usa formato `llm`
+- **Texto puro**: sem ANSI, sem JSON, separadores `---` entre hits, links `EVIDENCE:` e `PDF:` explícitos
+- **Eficiência de tokens**: ~40% menos que JSON, ~60% menos que tabela Rich
+- **Citation pronta**: cada hit traz `Art. 75 da Lei 14.133/2021` no formato jurídico brasileiro
+- **GNU-style parsing**: flags e argumentos em qualquer ordem (igual a `git`, `curl`, `kubectl`)
+- **Sub-segundo** para `lookup`, `read`, `grep`, `fs-search`, `quota`, `auth`, `config`
+
+### Para integração programática (Python)
+
+Quando for consumir programaticamente, prefira o **SDK Python** ao invés de fazer parse do output:
 
 ```bash
 pip install vectorgov
@@ -738,62 +245,54 @@ pip install vectorgov
 ```python
 from vectorgov import VectorGov
 
-vg = VectorGov(api_key="vg_xxx")
-results = vg.search("ETP", top_k=5)
+vg = VectorGov()  # lê VECTORGOV_API_KEY
+result = vg.search("ETP")
 
-for hit in results.hits:
-    print(f"{hit.document_id}, Art. {hit.article_number}")
-    print(f"  {hit.evidence_url}")
+for hit in result:
+    label = hit.citation or hit.source
+    print(f"[{hit.score:.0%}] {label}")
+    print(hit.text[:200])
 ```
 
-### Automação shell (requer `jq`)
+Veja [vectorgov-sdk-docs](https://github.com/euteajudo/vectorgov-sdk-docs) para a documentação completa do SDK.
 
-Para pipelines bash com filtragem/transformação de JSON, instale o
-[`jq`](https://jqlang.github.io/jq/):
-- **Windows**: `choco install jq` ou `winget install jqlang.jq`
-- **macOS**: `brew install jq`
-- **Linux**: `apt install jq` / `dnf install jq`
+---
+
+## ✅ Provando a veracidade
+
+Toda resposta do CLI inclui links de evidência verificável:
+
+- **`EVIDENCE:`** — link para o trecho destacado na norma original
+- **`PDF:`** — link para download do PDF oficial
+
+Exemplo:
 
 ```bash
-# Extrair texto do primeiro hit
-vectorgov search --raw "ETP" | jq '.hits[0].text'
+$ vectorgov search "ETP" --output llm
 
-# Capturar query_id em variável shell
-QUERY_ID=$(vectorgov search --raw "ETP" | jq -r '.query_id')
-vectorgov feedback send $QUERY_ID --like
-
-# Hybrid: extrair apenas artigos citados via grafo
-vectorgov hybrid "critérios de julgamento" --hops 2 --raw | jq '.cited_expansion'
-
-# Batch lookup: listar todas as URLs de evidência
-vectorgov lookup --raw "Art. 75, Art. 18 e Art. 33 da Lei 14.133" | jq -r '.results[].evidence_url'
+[1/3] Art. 18 da Lei 14.133/2021 (score: 0.97)
+Art. 18. A fase preparatória do processo licitatório é caracterizada pelo planejamento ...
+EVIDENCE: https://vectorgov.io/api/v1/evidence/leis%3ALEI-14133-2021%23ART-018
+PDF: https://vectorgov.io/api/v1/evidence/download/source/LEI-14133-2021
+---
 ```
 
-> **Dica**: `jq` é opcional. Para uso interativo (leitura no terminal), os
-> formatos `text`, `llm` e `json` do próprio CLI já resolvem. Para código Python,
-> use o SDK. Só use `jq` se estiver escrevendo shell scripts de automação.
+Os links têm validade de **30 minutos** após a busca. Use-os para auditoria, citação em respostas de LLM, ou redirecionar usuários humanos para a fonte oficial.
 
-## Variáveis de Ambiente
+---
 
-| Variável | Descrição |
-|----------|-----------|
-| `VECTORGOV_API_KEY` | API key para autenticação |
-| `VECTORGOV_OUTPUT` | Formato de output padrão: `llm`, `table`, `json`, `text` (v0.2.3) |
-| `VECTORGOV_DEFAULT_MODE` | Modo de busca padrão (fast, balanced, precise) |
-| `VECTORGOV_DEFAULT_TOP_K` | Número padrão de resultados |
+## 📖 Documentação completa
 
-## Arquivo de Configuração
+| Recurso | Quando usar |
+|---|---|
+| 🧭 [Cheat Sheet](docs/cheat-sheet.md) | Lookup rápido — todos os 20 comandos em 1 página |
+| 📖 [Reference de comandos](docs/commands.md) | Detalhe técnico de cada comando |
+| 🍳 [Receitas](docs/recipes.md) | 20 fluxos completos por caso de uso |
+| 📜 [CHANGELOG](CHANGELOG.md) | Histórico de versões |
 
-Localização: `~/.vectorgov/config.yaml`
+---
 
-```yaml
-api_key: vg_sua_chave
-default_mode: balanced
-default_top_k: 5
-default_output: table       # ou llm, json, text (v0.2.3)
-```
-
-## Ajuda
+## 🆘 Ajuda
 
 ```bash
 # Ajuda geral
@@ -801,15 +300,23 @@ vectorgov --help
 
 # Ajuda de comando específico
 vectorgov search --help
-vectorgov context --help
+vectorgov lookup --help
 
-# Versão do CLI
+# Versão
 vectorgov --version    # ou -V
-vectorgov version      # subcomando (alternativa)
 ```
 
-## Links
+---
 
-- [Documentação](https://vectorgov.io/documentacao)
-- [Playground](https://vectorgov.io/playground)
-- [SDK Python](https://pypi.org/project/vectorgov/)
+## 🤝 Suporte
+
+- 🐛 [GitHub Issues](https://github.com/euteajudo/vectorgov-cli-docs/issues)
+- 📧 contato@vectorgov.io
+- 🌐 [Playground online](https://vectorgov.io/playground)
+- 📦 [SDK Python](https://pypi.org/project/vectorgov/)
+
+---
+
+## 📜 Licença
+
+MIT. Veja [LICENSE](LICENSE).

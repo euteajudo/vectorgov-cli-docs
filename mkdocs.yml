@@ -1,0 +1,74 @@
+site_name: VectorGov CLI
+site_url: https://docs.vectorgov.io/cli
+site_description: CLI para busca semântica em legislação brasileira — humanos no terminal e agentes de IA
+site_author: VectorGov
+
+repo_name: euteajudo/vectorgov-cli-docs
+repo_url: https://github.com/euteajudo/vectorgov-cli-docs
+
+theme:
+  name: material
+  language: pt-BR
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Modo escuro
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Modo claro
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search:
+      lang: pt
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Início: index.md
+  - Cheat Sheet: cheat-sheet.md
+  - Reference de Comandos: commands.md
+  - Receitas: recipes.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/euteajudo/vectorgov-cli-docs

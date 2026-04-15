@@ -106,7 +106,7 @@ vectorgov-cli/
 │   │   ├── quota.py             # Uso do plano
 │   │   ├── read.py              # Texto canônico de documento (v0.2.1)
 │   │   ├── search.py            # Busca semântica
-│   │   ├── smart_search.py      # Busca inteligente MOC v4
+│   │   ├── smart_search.py      # Busca inteligente com análise jurídica
 │   │   └── tokens.py            # Estimativa de tokens
 │   └── utils/
 │       ├── config.py            # ConfigManager (YAML + env vars)
@@ -135,7 +135,7 @@ vectorgov-cli/
 | Comando | Descrição | Exemplo | Flags principais |
 |---------|-----------|---------|------------------|
 | `search` | Busca semântica (filtros client-side) | `vectorgov search "dispensa" --tipo LEI --ano 2021` | `--top-k`, `--mode`, `--tipo`, `--ano`, `--doc`, `--cache` |
-| `smart-search` | Busca inteligente MOC v4 com confiança | `vectorgov smart-search "Quando o ETP pode ser dispensado?"` | `--cache`, `--output` |
+| `smart-search` | Busca inteligente com análise jurídica e confiança | `vectorgov smart-search "Quando o ETP pode ser dispensado?"` | `--cache`, `--output` |
 | `hybrid` | Busca semântica + grafo normativo | `vectorgov hybrid "Critérios de julgamento" --hops 2` | `--top-k`, `--hops`, `--graph-expansion`, `--token-budget` |
 | `lookup` | Consulta artigo/dispositivo por referência legal (suporta batch) | `vectorgov lookup "Art. 75 da Lei 14.133"` | `--parent/--no-parent`, `--siblings/--no-siblings`, `--pipe`, `-o text/json/llm`, `--raw` |
 | `grep` | Busca exata por texto | `vectorgov grep "dispensa" --max 10 --context-lines 5` | `--doc`, `--max/-n`, `--context-lines/-C` |
@@ -448,7 +448,7 @@ vectorgov init --claude
 | 0.2.9 | 12/04/2026 | `lookup` batch text output exibe `evidence_url`/`document_url` de cada resultado. |
 | 0.2.8 | 12/04/2026 | `lookup` single renderiza auto-split batch do backend (antes exibia "Nenhum dispositivo encontrado"). |
 | 0.2.7 | 12/04/2026 | `lookup -o json` emite JSON estruturado (fix serializacao de dict Python no campo text). |
-| 0.2.6 | 12/04/2026 | Comando `ask` restrito a admins, escondido do `--help`. Verificacao via `GET /sdk/me`. |
+| 0.2.6 | 12/04/2026 | Reorganizacao interna de comandos legados (escondidos do `--help` publico). |
 | 0.2.5 | 12/04/2026 | Adiciona flag `--version` / `-V` global (convenção python/node/git/pip). Subcomando `version` mantido para compat. |
 | 0.2.4 | 12/04/2026 | Documentação interna limpa: remove menções a tecnologias específicas do stack backend nos docstrings, comentários, help messages, README, MAPA e CHANGELOG. |
 | 0.2.3 | 12/04/2026 | Features otimizadas para IAs: `--output llm` (texto puro sem ANSI/JSON), `VECTORGOV_OUTPUT` env var + config `default_output`, comando `explain` (lookup+texto consolidado em 1 chamada), `--pipe` em lookup (batch stdin). 21 comandos (era 19). |
