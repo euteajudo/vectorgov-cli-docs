@@ -7,13 +7,27 @@ Cliente de linha de comando para a API VectorGov - Busca semântica em legislaç
 [![Python versions](https://img.shields.io/pypi/pyversions/vectorgov-cli.svg)](https://pypi.org/project/vectorgov-cli/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Para LLMs e agentes de IA (v0.2.3)
+> **Novo em 0.3.2** — zero truncamento de conteúdo em todos os formatos
+> de saída + TTY detection automática: quando stdout não é terminal
+> (pipe, LLM, CI/CD), o formato padrão vira `llm` automaticamente. A
+> tabela do `search` ganhou coluna `Norma` para identificar de qual
+> lei cada artigo veio. Veja o [CHANGELOG](CHANGELOG.md#032---2026-04-15).
+>
+> **Novo em 0.3.1** — parsing GNU-style: flags e argumentos funcionam
+> em qualquer ordem (`search "ETP" --top-k 3` e `search --top-k 3 "ETP"`
+> fazem a mesma coisa).
+
+## Para LLMs e agentes de IA (v0.3.2+)
 
 Se voce e um LLM ou agente de IA usando o CLI do VectorGov em sessoes
 de vibe coding, estas features foram projetadas para voce:
 
 ```bash
-# Formato otimizado para IAs (texto puro, sem ANSI, sem JSON)
+# TTY detection automatica (0.3.2): se voce executa via subprocess
+# ou pipe, o CLI ja entrega formato llm automaticamente.
+vectorgov search "O que e ETP?"
+
+# Ou forcando explicitamente quando rodar em terminal real
 vectorgov search --output llm "O que e ETP?"
 
 # Definir como padrao para toda a sessao
@@ -26,10 +40,22 @@ vectorgov explain --output llm "Art. 75 da Lei 14.133"
 printf "Art. 75 da Lei 14.133\nArt. 33 da Lei 14.133" | vectorgov lookup --raw --pipe
 ```
 
+**Zero truncamento (0.3.2)**: todos os formatos de saida (`table`,
+`text`, `json`, `llm`, `markdown`) retornam texto integral dos
+artigos. Se voce quer menos dados, use `--top-k N`. Antes da 0.3.2,
+o default `table` cortava o texto em 95 caracteres — problema que
+impedia LLMs de ler o conteudo completo das normas.
+
+**TTY detection (0.3.2)**: quando stdout nao e um terminal (pipe,
+redirect, subprocess de agente, CI/CD), o CLI detecta isso
+automaticamente e usa formato `llm` em vez de `table`. Voce nao
+precisa passar `--output llm` toda vez.
+
 O formato `llm` retorna texto puro com separadores `---` entre hits,
-headers `[N/total] fonte (score)` e links `EVIDENCE:` / `PDF:` por hit.
-Economiza ~40% de tokens comparado ao JSON (`--raw`) e elimina escapes
-ANSI do formato `text` que poluem o contexto do modelo.
+headers `[N/total] Lei 14.133/2021, Art. 75 (score=0.99)` e links
+`EVIDENCE:` / `PDF:` por hit. Economiza ~40% de tokens comparado ao
+JSON (`--raw`) e elimina escapes ANSI do formato `text` que poluem
+o contexto do modelo.
 
 ---
 
@@ -49,8 +75,12 @@ Ambos são URLs absolutas (prefixadas com `https://vectorgov.io`) e permanentes
 ```bash
 $ vectorgov search --top-k 1 --output text "O que é ETP?"
 
-[1] Art. 3 (score: 0.987)
-I - Estudo Técnico Preliminar - ETP: documento constitutivo...
+[1] IN 58/2022, Art. 3 (score: 0.987)
+I - Estudo Técnico Preliminar - ETP: documento constitutivo da primeira etapa
+do planejamento de uma contratação que caracteriza o interesse público
+envolvido e a sua melhor solução e dá base ao anteprojeto, ao termo de
+referência ou ao projeto básico a serem elaborados caso se conclua pela
+viabilidade da contratação;
     Ver trecho: https://vectorgov.io/api/v1/evidence/IN-58-2022%23INC-003-I
     Baixar PDF: https://vectorgov.io/api/v1/evidence/download/source/IN-58-2022
 ```
@@ -639,12 +669,17 @@ vectorgov search "O que é ETP?" --output table
 Resultados para: O que é ETP?
 Total: 5 | Latência: 1234ms | Cache: Não
 
-┏━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
-┃ # ┃ Artigo    ┃ Texto                                                          ┃ Score   ┃
-┡━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
-│ 1 │ Art. 3    │ ETP - Estudo Técnico Preliminar: documento constitutivo...     │ 0.892   │
-│ 2 │ Art. 1    │ Esta Instrução Normativa dispõe sobre a elaboração...          │ 0.856   │
-└───┴───────────┴────────────────────────────────────────────────────────────────┴─────────┘
+┏━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ # ┃ Norma                ┃ Artigo ┃ Texto                                          ┃   Score ┃ Evidência    ┃
+┡━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ 1 │ IN 58/2022           │ 3      │ I - Estudo Técnico Preliminar - ETP: documento │   0.987 │ ver trecho   │
+│   │                      │        │ constitutivo da primeira etapa do planejamento │         │              │
+│   │                      │        │ de uma contratação...                          │         │              │
+│ 2 │ IN 65/2021           │ 1      │ Art. 1º Esta Instrução Normativa dispõe sobre  │   0.856 │ ver trecho   │
+│   │                      │        │ a elaboração...                                │         │              │
+└───┴──────────────────────┴────────┴────────────────────────────────────────────────┴─────────┴──────────────┘
+
+Fontes (2): IN 58/2022, IN 65/2021
 ```
 
 ### JSON

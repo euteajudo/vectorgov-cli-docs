@@ -5,6 +5,109 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.3.2] - 2026-04-15
+
+### Adicionado
+
+- **Coluna `Norma` na tabela do `search`**: cada linha agora mostra a
+  qual norma o artigo pertence (ex: `Lei 14.133/2021`, `IN 65/2021`,
+  `Decreto 10.947/2022`). Antes, o usuario via apenas `Art. 3º` sem
+  saber de qual norma — problema critico quando varias normas tem a
+  mesma numeracao. Os outros 5 comandos de busca (`smart-search`,
+  `hybrid`, `merged`, `fs-search`, `grep`) ja tinham coluna `Fonte`
+  equivalente.
+
+- **Helper `format_document_label(document_id)`**: formata IDs
+  internos para exibicao humana. Exemplos: `LEI-14133-2021` ->
+  `Lei 14.133/2021`, `IN-65-2021` -> `IN 65/2021`,
+  `DECRETO-10947-2022` -> `Decreto 10.947/2022`, `AC-1852-2020-P` ->
+  `Acordao 1.852/2020-P`. Usado em colunas de tabela, headers de
+  text mode e footers de rodape.
+
+- **TTY detection automatica em `resolve_output_format`**: quando
+  stdout nao e um terminal (pipe, redirect, LLM, CI/CD), o formato de
+  saida padrao vira `llm` automaticamente em vez de `table`. Agentes
+  de IA que executam `vectorgov search "..."` agora recebem texto
+  integral otimizado para consumo por modelos, sem precisar passar
+  `--output llm` explicitamente. Comportamento GNU-style
+  (`ls --color=auto`, `git log`, `jq`).
+
+  **Precedencia completa do resolver de formato**:
+  1. `--raw` (bypass tudo)
+  2. `--output` explicito diferente do default do comando
+  3. `VECTORGOV_OUTPUT` env var
+  4. `config.default_output`
+  5. **stdout nao e TTY** (novo) -> `llm`
+  6. Default do comando
+
+  Preferencias explicitas sempre tem precedencia sobre a detecao
+  automatica. Para forcar tabela em pipe, use `VECTORGOV_OUTPUT=table`.
+
+- **Footer do `search` com fontes unicas**: substitui o antigo
+  `PDF do primeiro resultado: ...` por uma lista consolidada
+  `Fontes (N): Lei 14.133/2021, IN 65/2021, ...` com todas as normas
+  envolvidas nos hits, ja formatadas para leitura humana.
+
+### Corrigido
+
+- **Zero truncamento de conteudo em TODOS os formatos de saida**:
+  removidas 26 ocorrencias de truncamento (`text[:N] + "..."`)
+  espalhadas em 11 arquivos. Antes, o default `table` cortava textos
+  em apenas 95 caracteres, tornando impossivel para um LLM ler o
+  conteudo completo dos artigos retornados. O truncamento tambem
+  existia em `text` (300 chars), `json` (300 chars em varios
+  comandos), e ate no proprio `llm` (cap de 2000 chars). Agora todos
+  os formatos retornam texto integral.
+
+  **Filosofia**: se o usuario quer menos dados, use `--top-k N`.
+
+  Comandos afetados (todos os 14 single-shot + docs):
+  `search`, `smart-search`, `hybrid`, `merged`, `fs-search`, `grep`,
+  `lookup`, `explain`, `ask`, `context`, `tokens`, `read`, `quota`,
+  `init`, `docs list`.
+
+  Truncamentos de credenciais (`auth login`, `config list/get`) foram
+  MANTIDOS pois mascarar API keys com `vg_abc...xyz1` e correto por
+  seguranca.
+
+- **Word-wrap automatico em todas as 6 tabelas de busca**: coluna
+  `Texto`/`Trecho` agora usa Rich `overflow="fold"`, permitindo
+  quebra natural em multiplas linhas da celula preservando o dado
+  integral. Em TTY largo fica excelente; em terminal estreito as
+  linhas ficam mais altas mas o conteudo e sempre completo.
+
+## [0.3.1] - 2026-04-15
+
+### Corrigido
+
+- **Parsing GNU-style de argumentos**: o CLI agora aceita flags e
+  argumentos posicionais em qualquer ordem, conforme o padrao da
+  industria (git, curl, kubectl, npm, etc). Antes, os 14 comandos
+  single-shot (`search`, `grep`, `hybrid`, `lookup`, `merged`,
+  `smart-search`, `fs-search`, `context`, `tokens`, `explain`,
+  `read`, `quota`, `init`, `ask`) quebravam com
+  `Missing argument 'QUERY'` quando flags vinham depois da query
+  (ex: `vectorgov search "ETP" --top-k 3`).
+
+  **Causa raiz**: cada comando estava registrado como multi-command
+  group do Click via a combinacao `app.add_typer(cmd.app, ...)` +
+  `@app.callback(invoke_without_command=True)`. Em group, o parser
+  do Click para de aceitar flags intercaladas com posicionais porque
+  tenta resolver subcomandos inexistentes.
+
+  **Fix**: cada um dos 14 comandos single-shot agora e uma funcao
+  Python pura registrada diretamente no app raiz via
+  `app.command(name=...)(fn)`. Os 6 grupos reais com subcomandos
+  (`auth`, `audit`, `config`, `docs`, `feedback`, `prompts`)
+  continuam usando `add_typer()`.
+
+  Zero breaking change: a ordem antiga (flags antes da query)
+  continua funcionando — o fix e aditivo.
+
+- **`commands/__init__.py` desatualizado**: faltavam os re-exports
+  de `fs_search`, `read` e `explain`. Agora todos os 20 comandos
+  estao expostos.
+
 ## [0.3.0] - 2026-04-12
 
 ### Adicionado
