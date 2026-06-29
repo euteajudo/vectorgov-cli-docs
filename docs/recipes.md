@@ -97,6 +97,33 @@ vectorgov merged "prazo para impugnação do edital"
 
 Combina semântica + índice curado via Reciprocal Rank Fusion (RRF). Hits que aparecem nos dois recebem boost automático.
 
+### Mais cobertura em perguntas multi-dispositivo (`--payload-coverage`)
+
+```bash
+vectorgov hybrid "Quais os critérios de julgamento?" --payload-coverage strict@20 --show-stats
+```
+
+Perguntas respondidas por **vários artigos/incisos** ganham completude no modo
+`strict@20` (wide) — ao custo de **~1,7× mais tokens**. O default é `strict@10`
+(lean), melhor para resposta-direta-de-LLM (janelas grandes sofrem de
+*lost-in-middle*); use o wide para **recall/revisão**.
+
+O custo é **medível**: cada resposta traz `token_count_estimate` (total),
+`token_count_method` (método de contagem), `token_count_breakdown`
+(`lei` + `curadoria` + `estrutura`) e `payload_coverage` no `--raw`/`json` e no
+rodapé do `--show-stats`.
+
+### Enxugar o payload mandado ao LLM
+
+```bash
+# só o texto da lei — sem nota do especialista, jurisprudência, proveniência ou links
+vectorgov search "dispensa de licitação" --no-nota-espec --no-jurisprudencia --no-proveniencia --no-links --output llm
+```
+
+As 4 flags valem em todos os comandos de busca e vêm **ligadas por padrão**. O
+texto do dispositivo nunca é removido. Útil para reduzir tokens quando você só
+precisa do dispositivo cru. (Requer SDK `vectorgov >= 0.21.0`.)
+
 ---
 
 ## 📌 Lookup de referências legais

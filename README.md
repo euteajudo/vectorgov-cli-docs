@@ -7,10 +7,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Novidades**:
+> - **0.5.1** — `hybrid` mescla e rotula os nós de grafo (`--hops`) em todos os formatos; rótulo da Lei Complementar 123/2006 corrigido
+> - **0.5.0** — flags `--no-nota-espec` / `--no-jurisprudencia` / `--no-proveniencia` / `--no-links` para enxugar o payload enviado ao LLM (default = completo)
+> - **0.4.x** — `--payload-coverage strict@10|strict@20` no `hybrid` + telemetria de tokens (`token_count_estimate`, `token_count_breakdown`, `payload_coverage`) em todos os comandos de busca
 > - **0.3.6** — coluna "Referência" usa `hit.citation` (`Art. 75 da Lei 14.133/2021`) — formato jurídico brasileiro
-> - **0.3.5** — créditos exibidos no rodapé de todos os comandos pagos
 > - **0.3.2** — zero truncamento de conteúdo + TTY detection automática (pipes recebem `llm` por padrão)
-> - **0.3.1** — parsing GNU-style: flags e argumentos em qualquer ordem (`search "ETP" --top-k 3` ou `search --top-k 3 "ETP"`)
 
 ---
 
@@ -231,6 +232,8 @@ vectorgov init --all
 - **Texto puro**: sem ANSI, sem JSON, separadores `---` entre hits, links `EVIDENCE:` e `PDF:` explícitos
 - **Eficiência de tokens**: ~40% menos que JSON, ~60% menos que tabela Rich
 - **Citation pronta**: cada hit traz `Art. 75 da Lei 14.133/2021` no formato jurídico brasileiro
+- **Telemetria de tokens**: cada resposta de busca traz `token_count_estimate`, `token_count_breakdown` e `payload_coverage` para orçar o contexto antes de mandar ao LLM
+- **Payload sob medida**: desligue nota/jurisprudência/proveniência/links com `--no-*`; no `hybrid`, `--payload-coverage strict@20` aumenta a cobertura em perguntas multi-dispositivo
 - **GNU-style parsing**: flags e argumentos em qualquer ordem (igual a `git`, `curl`, `kubectl`)
 - **Sub-segundo** para `lookup`, `read`, `grep`, `fs-search`, `quota`, `auth`, `config`
 

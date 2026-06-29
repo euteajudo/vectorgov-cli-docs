@@ -137,6 +137,8 @@ export VECTORGOV_OUTPUT=llm
 
 Todos os comandos passam a retornar texto puro otimizado (~40% menos tokens que JSON). O CLI também detecta automaticamente quando o stdout não é um terminal e usa `llm` por padrão.
 
+> 💡 **Orçando o contexto**: toda resposta de busca traz telemetria de tokens (`token_count_estimate`, `token_count_breakdown`, `payload_coverage`). No `hybrid`, `--payload-coverage strict@20` aumenta a cobertura em perguntas multi-dispositivo (ao custo de ~1,7× tokens). Para mandar só o texto cru ao LLM, use os flags `--no-nota-espec` / `--no-jurisprudencia` / `--no-proveniencia` / `--no-links`.
+
 Veja [docs/cheat-sheet.md](cheat-sheet.md) para o guia completo de uso por agentes.
 
 ---

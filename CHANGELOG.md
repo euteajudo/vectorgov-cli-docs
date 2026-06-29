@@ -5,6 +5,225 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.5.1] - 2026-06-28
+
+### Corrigido
+
+- **`hybrid` escondia a expansao de grafo (`--hops`)**: o render usava o fallback
+  `hits = direct if direct else graph`, descartando os nos de grafo sempre que
+  havia seeds. Agora **mescla** os hits diretos + nos de grafo (dedup por
+  `node_id`/`chunk_id`) e os rotula corretamente: `graph: true` no JSON, coluna
+  "Grafo" na tabela, tag `[grafo]` no texto — em todos os formatos
+  (raw/json/text/table).
+- **Rotulo da fonte da Lei Complementar 123/2006** (`"LEI_COMPLEMENTAR
+  COMPLEMENTAR/2006"` -> `"LEI_COMPLEMENTAR 123/2006"`): o numero era derivado
+  incorretamente para tipos de documento compostos. Corrigido na API; o CLI passa
+  a exibir o rotulo certo automaticamente.
+
+## [0.5.0] - 2026-06-28
+
+### Adicionado
+
+- **Flags de supressao de features complementares** (`--nota-espec/--no-nota-espec`,
+  `--jurisprudencia/--no-jurisprudencia`, `--proveniencia/--no-proveniencia`,
+  `--links/--no-links`; default ON) nos comandos `search`, `hybrid`,
+  `smart-search`, `merged`, `grep`, `fs-search`, `lookup`, `explain`, `context`
+  e `ask`. Permitem desligar cada feature do payload enviado ao LLM mantendo
+  **SEMPRE** o texto do dispositivo. **Default = payload completo.**
+  - `--proveniencia` gateia apenas o que vai ao LLM; campos de rastreabilidade
+    no JSON/raw (`document_id`/`span_id`/`breadcrumb`) sao preservados.
+  - `lookup` aplica as flags nos 3 caminhos: single, batch `--pipe` e auto-split,
+    em todos os formatos (`raw`/`json`/`text`/`llm`).
+
+### Requisitos
+
+- Requer `vectorgov` (SDK) **>= 0.21.0** para o efeito das flags.
+
+## [0.4.2] - 2026-06-27
+
+### Adicionado
+
+- **`token_count_estimate` / `token_count_breakdown` / `payload_coverage` em
+  todos os comandos de busca** (antes so no `hybrid`). Agora `search`,
+  `smart-search`, `lookup`, `fs-search`, `grep`, `merged` e `ask` expoem os
+  campos no formato `llm` (rodape) e/ou no `--raw`/JSON; `ask` tambem imprime o
+  rodape no formato texto. Os campos aparecem quando o SDK e a API os fornecem;
+  caso contrario sao omitidos (degradacao graciosa).
+
+## [0.4.1] - 2026-06-27
+
+### Corrigido
+
+- **`token_count_estimate` / `token_count_breakdown` agora aparecem no formato
+  padrao** (texto/`llm`). Na 0.4.0 so apareciam no `--show-stats` e no
+  `--output json`; o rodape do formato padrao nao os exibia. Agora mostra, p.ex.:
+
+  ```
+  Total: 10 hits | Latencia: 1.3s | payload: strict@20 | ~2372 tokens | (lei=1856 curadoria=0 estrutura=516) | Request ID: ...
+  ```
+
+## [0.4.0] - 2026-06-26
+
+### Adicionado — `--payload-coverage` no `hybrid`
+
+- **`--payload-coverage strict@10|strict@20`**: escolhe a janela de entrega.
+  `strict@10` (default, lean) preserva o comportamento atual; `strict@20` (wide)
+  entrega mais dispositivos — vantajoso em perguntas **multi-dispositivo** (ex.:
+  *"quais os criterios de julgamento?"*), onde a **completude sobe sensivelmente**
+  (no golden: +0,231 de cobertura na categoria multi, vs +0,127 no geral; sem
+  regressao). Requer `vectorgov>=0.20.0`.
+
+  ```bash
+  vectorgov hybrid "Quais os criterios de julgamento?" --payload-coverage strict@20 --show-stats
+  ```
+
+- **`token_count_estimate` exposto** no JSON, no rodape do `--show-stats` e na
+  metadata do formato `llm`. E o **preco em tokens** do payload — sobe **~1,7x**
+  no `strict@20` (ex.: ~1609 -> ~2372).
+
+  **Importante (composicao do payload):** o `token_count_estimate` mede o payload
+  **COMPLETO** entregue ao LLM, **nao so o texto da lei**. Cada trecho tambem
+  transporta a **nota do especialista** e a **jurisprudencia do TCU** (curadoria),
+  alem de cabecalhos estruturais. Total = **lei + curadoria + estrutura**.
+
+- **`token_count_breakdown`** (requer `vectorgov>=0.20.1`): decompoe o custo em
+  `law_chunks` / `curadoria` / `structure` (soma == `token_count_estimate`).
+
+## [0.3.8] - 2026-04-29
+
+### Alterado — contrato JSON do `audit stats`
+
+O campo `total_requests` no output JSON do `audit stats` era inconsistente com a
+intencao do comando (que conta **eventos de seguranca**, nao requisicoes totais).
+O JSON agora emite **`total_security_events`** como campo canonico e mantem
+`total_requests` como **alias depreciado** para nao quebrar integracoes existentes.
+
+```json
+{
+  "period_days": 30,
+  "total_security_events": 0,
+  "total_requests": 0,   // DEPRECATED: use total_security_events
+  "success_rate": 100.0,
+  "avg_latency_ms": 0
+}
+```
+
+`total_requests` sera removido em versao futura. O texto/table ja rotula como
+"Eventos registrados" desde 0.3.7.
+
+### Corrigido — bugs encontrados na auditoria do CLI
+
+Auditoria de 136 casos de teste em 8 grupos de comandos. Esta versao corrige os
+bugs do lado do CLI:
+
+- **`VECTORGOV_OUTPUT=json` ignorado em 6 comandos**: `grep`, `merged`, `hybrid`,
+  `smart-search`, `fs-search` e `lookup` liam a flag bruta de formato em vez do
+  formato efetivo (resultado do resolver). Com `VECTORGOV_OUTPUT=json`, caiam no
+  branch `table` em vez de emitir JSON. Uniformizado.
+- **`grep -o json` com 0 hits saia com exit 1 e mensagem em texto**: agora emite
+  `{"hits": [], "total": 0}` como contrato canonico mesmo com lista vazia.
+- **campo `matched_line` ausente no `grep --raw`**: adicionado ao payload (com
+  fallback para `source`). `source` continua presente para retrocompatibilidade.
+- **URLs relativas em `lookup --raw`**: `evidence_url`/`document_url` agora sao
+  sempre absolutas em todos os caminhos de serializacao.
+- **`graph_score` ausente em `hybrid --raw`**: incluido nos nos de grafo (`0.0`
+  quando a API nao expoe o campo).
+
+Alguns itens reportados na auditoria sao do lado do servidor (cache semantico,
+filtro de relevancia para queries sem sentido, expansao de grafo com `hops=2`,
+filtro `--doc` em `search`) e sao tratados em releases da API.
+
+## [0.3.7] - 2026-04-20
+
+### Alterado
+
+- **`audit` clarifica que conta eventos de SEGURANCA, nao requisicoes totais**.
+  O comando `audit stats` consulta o historico de eventos de seguranca, mas a
+  docstring dizia "estatisticas agregadas de uso" — usuarios faziam N buscas
+  limpas e viam "Total de requisicoes: 0", assumindo que o sistema estava
+  quebrado. Mudancas so de texto (sem quebra de contrato):
+  - help do grupo `audit`: "Eventos de seguranca (PII, injection, rate-limit)"
+  - `audit logs`/`audit stats`: deixam explicito que e log de eventos de
+    seguranca e apontam para https://vectorgov.io/uso-api para o historico de uso
+  - "Total de requisicoes" renomeado para "Eventos registrados"
+  - mensagem quando zero eventos explica que e o esperado para uso limpo
+
+## [0.3.6] - 2026-04-15
+
+### Adicionado
+
+- **Coluna "Referencia" usa `hit.citation` no modo `table`**: `vectorgov search`
+  (e demais comandos que usam `format_search_results`) exibem uma coluna unica
+  "Referencia" com a citacao no estilo juridico brasileiro (ex:
+  `Art. 75 da Lei 14.133/2021`, `Inc. III do paragrafo 2 do Art. 75 da Lei
+  14.133/2021`). Substitui as colunas "Norma" + "Artigo". Sem `citation` (caches
+  legados), cai em fallback montando a referencia de `document_id` +
+  `article_number`.
+
+- **Label no modo `llm` prefere `hit.citation`**: o header de cada hit
+  (`[1/N] ...`) usa `citation` quando disponivel, com fallback para `source`:
+
+  ```
+  [1/5] Art. 75 da Lei 14.133/2021 (score=0.97)
+  Art. 75. E dispensavel a licitacao: ...
+  ```
+
+### Compatibilidade
+
+- Compativel com `vectorgov >= 0.19.2` via `getattr(hit, "citation", None)`. Para
+  ver `citation` populado, atualize o SDK para `>= 0.19.4`.
+
+## [0.3.5] - 2026-04-15
+
+### Adicionado
+
+- **Rodape de creditos em `read` e `merged`**: `vectorgov read` passa a incluir
+  `credits` no output json/raw e o rodape no output text; `merged` ja tinha a
+  infraestrutura e agora o SDK popula `result.credits` (requer SDK >= 0.19.2).
+  Lista completa dos comandos que exibem creditos: `search`, `smart-search`,
+  `hybrid`, `lookup`, `merged`, `grep`, `fs-search`, `read`. Comandos gratuitos
+  (`tokens`, `feedback`, `docs`, `prompts`, `audit`, `init`, `auth`, `config`,
+  `quota`) nao exibem — nao cobram creditos.
+
+## [0.3.4] - 2026-04-15
+
+### Adicionado
+
+- **Rodape de creditos nos comandos de busca**: todos os comandos que consomem
+  creditos (`search`, `hybrid`, `lookup`, `smart-search`, `merged`, `grep`,
+  `fs-search`) exibem o custo da chamada e o saldo restante. Exemplo:
+
+  ```
+  Creditos: 1 (saldo: 67)
+  ```
+
+  - **llm**: incluido na linha final de metadata.
+  - **json**: novo campo `credits` top-level com `cost`, `balance` e `endpoint`.
+  - **text/table**: linha logo apos o request_id.
+
+  Requer `vectorgov >= 0.19.1` (o SDK captura os headers de credito da resposta e
+  expoe via `result.credits`). Em SDK antigo, o campo e silenciosamente omitido.
+
+- **Helpers novos em `utils/output.py`**: `extract_credits`,
+  `format_credits_line`, `print_credits_footer`.
+
+## [0.3.3] - 2026-04-15
+
+### Adicionado
+
+- **Flag `--show-stats` em `hybrid`**: exibe estatisticas de expansao (seeds,
+  nos de grafo, tokens do contexto, truncamento) no rodape do output
+  text/llm/table, sem precisar de `--raw`. Util para entender o quanto o grafo
+  contribuiu vs busca semantica direta.
+
+  ```bash
+  vectorgov hybrid "dispensa de licitacao" --top-k 5 --show-stats
+  # Stats: seeds=3 | graph_nodes=8 | tokens=2451 | truncated=nao
+  ```
+
+  Le `result.stats` do SDK (aceita dict ou objeto); fallback conta direto os
+  hits quando o SDK nao popula stats.
+
 ## [0.3.2] - 2026-04-15
 
 ### Adicionado
