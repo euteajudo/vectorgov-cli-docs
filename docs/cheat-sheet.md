@@ -81,6 +81,38 @@ graph TD
 | `vectorgov read DOC-ID --span ART-NNN` | **free** | Lê texto canônico completo |
 | `vectorgov explain "Art. X da Lei Y"` | 💰 | lookup + texto em uma chamada |
 
+### 🎛️ Flags de payload (default tudo ON — desligue o que não quiser no LLM)
+
+Valem em `search`/`hybrid`/`smart-search`/`merged`/`grep`/`fs-search`/`lookup`/`explain`/`context`/`ask`.
+O **texto do dispositivo nunca é removido**. (Requer SDK `vectorgov >= 0.21.0`.)
+
+| Flag | Desliga |
+|---|---|
+| `--no-nota-espec` | Nota do especialista |
+| `--no-jurisprudencia` | Jurisprudência relacionada (TCU) |
+| `--no-proveniencia` | Proveniência (origem) |
+| `--no-links` | Links de evidência (PDF / trecho) |
+
+```bash
+# só o texto da lei
+vectorgov lookup "Art. 75 da Lei 14.133" --no-nota-espec --no-jurisprudencia --no-proveniencia --no-links
+```
+
+### 🎯 Cobertura do payload (`--payload-coverage`, só no `hybrid`)
+
+| Valor | Quando usar |
+|---|---|
+| `strict@10` | **Default (lean)** — resposta direta de LLM; janela menor evita *lost-in-middle* |
+| `strict@20` | **Opt-in (wide)** — perguntas **multi-dispositivo**; +cobertura ao custo de **~1,7× tokens** (a resposta final de LLM não melhora) |
+
+```bash
+vectorgov hybrid "Quais os critérios de julgamento?" --payload-coverage strict@20 --show-stats
+```
+
+Toda resposta de busca traz **telemetria de tokens** (quando disponível):
+`token_count_estimate` (total), `token_count_method` (método de contagem),
+`token_count_breakdown` (`lei` + `curadoria` + `estrutura`) e `payload_coverage`.
+
 ### 🤖 LLM helpers (3 comandos)
 
 | Comando | Custo | Caso de uso |

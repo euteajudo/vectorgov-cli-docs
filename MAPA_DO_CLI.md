@@ -1,7 +1,7 @@
 # MAPA DO CLI VECTORGOV
 
-> **Versão**: 0.2.12
-> **Data**: Abril 2026
+> **Versão**: 0.5.1
+> **Data**: Junho 2026
 > **Objetivo**: Documentação completa da arquitetura e funcionamento do CLI VectorGov
 
 ---

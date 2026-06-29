@@ -104,6 +104,8 @@ vectorgov smart-search "pesquisa de preços" --cache
 vectorgov hybrid "Critérios de julgamento em licitações"
 vectorgov hybrid "Dispensa de licitação" --hops 2 --top-k 15
 vectorgov hybrid "licitação" --output json
+# Pergunta multi-dispositivo → mais cobertura (custa ~1,7x tokens):
+vectorgov hybrid "Quais os critérios de julgamento?" --payload-coverage strict@20 --show-stats
 ```
 
 #### Flags
@@ -113,8 +115,30 @@ vectorgov hybrid "licitação" --output json
 | `--hops` | int (1-2) | `1` | Saltos no grafo |
 | `--graph-expansion` | `bidirectional`/`forward` | `bidirectional` | Direção da expansão |
 | `--token-budget` | int | `6000` | Limite de tokens do contexto |
+| `--payload-coverage` | `strict@10`/`strict@20` | `strict@10` | Janela de entrega: lean (default) ou wide (+cobertura, +tokens) |
 | `--output/-o` | `table`/`json`/`text` | `table` | Formato |
 | `--raw` | flag | `false` | Inclui `graph_nodes` e `stats` |
+
+> 🎛️ Os 4 flags de payload (`--no-nota-espec`, `--no-jurisprudencia`, `--no-proveniencia`, `--no-links`) também valem aqui — veja [Flags de payload](#flags-de-payload-suprimir-features-no-envio-ao-llm).
+
+#### `--payload-coverage` e o custo em tokens
+
+Perguntas **multi-dispositivo** (respondidas por vários artigos/incisos) ficam
+mais completas no modo **`strict@20`** (wide) — no golden, +0,231 de cobertura na
+categoria multi (vs +0,127 no geral), **sem regressão**. O preço é **~1,7× mais
+tokens**, e esse custo é **medível**: `token_count_estimate` aparece no JSON, no
+rodapé `--show-stats` e na metadata do formato `llm`.
+
+O default é **`strict@10`** (lean): a **resposta final de um LLM não melhora** com
+a janela maior (janelas grandes sofrem de *lost-in-middle*). Por isso o wide vale
+a pena para **recall/revisão** — quando você quer ver mais dispositivos — e não
+para resposta-direta-de-LLM.
+
+> **Composição do payload:** o `token_count_estimate` conta o payload **completo**
+> entregue ao LLM — **não só o texto da lei**. Cada trecho também transporta a
+> **nota do especialista** e a **jurisprudência do TCU** (curadoria), além de
+> cabeçalhos estruturais. Total = **lei + curadoria + estrutura**. Considere isso
+> ao orçar o contexto.
 
 #### Veja também
 - [`merged`](#merged) — versão dual-path com filesystem
@@ -549,6 +573,56 @@ vectorgov init --codex     # Apenas AGENTS.md
 vectorgov --version    # ou -V
 vectorgov version      # subcomando alternativo
 ```
+
+---
+
+## 🎛️ Flags de payload (suprimir features no envio ao LLM)
+
+Disponíveis em `search`, `hybrid`, `smart-search`, `merged`, `grep`, `fs-search`,
+`lookup`, `explain`, `context` e `ask`. Todas vêm **ligadas por padrão** (payload
+completo) — desligue o que não quiser mandar ao LLM. O **texto do dispositivo
+nunca é removido**.
+
+| Flag | Desliga |
+|---|---|
+| `--no-nota-espec` | Nota do especialista |
+| `--no-jurisprudencia` | Jurisprudência relacionada (TCU) |
+| `--no-proveniencia` | Proveniência (origem) — só no payload do LLM; `document_id`/`span_id`/`breadcrumb` seguem no JSON/raw |
+| `--no-links` | Links de evidência (PDF / trecho destacado) |
+
+```bash
+# só o texto da lei, sem curadoria nem links
+vectorgov lookup "Art. 75 da Lei 14.133" --no-nota-espec --no-jurisprudencia --no-proveniencia --no-links
+```
+
+> Requer `vectorgov` (SDK) **>= 0.21.0** para o efeito das flags.
+
+---
+
+## 📊 Telemetria de tokens nas respostas
+
+Os comandos de busca (`search`, `smart-search`, `hybrid`, `lookup`, `merged`,
+`grep`, `fs-search` e `ask`) anexam, quando disponível, a **telemetria de tokens**
+do payload que seria entregue a um LLM. Os campos aparecem no `--raw`/`--output
+json`, no rodapé do formato padrão/`llm` e no rodapé do `--show-stats` (hybrid).
+
+| Campo | Descrição |
+|---|---|
+| `token_count_estimate` | Estimativa do total de tokens do payload **completo** (lei + curadoria + estrutura) entregue ao LLM. |
+| `token_count_method` | Método usado para produzir a contagem (ex.: `estimate`). Indica se o número é aproximado. |
+| `token_count_breakdown` | Decomposição do custo: `law_chunks` (texto da lei), `curadoria` (nota do especialista + jurisprudência) e `structure` (cabeçalhos). A soma é igual a `token_count_estimate`. |
+| `payload_coverage` | Janela de entrega aplicada (`strict@10` lean por padrão, `strict@20` wide). Ver [`hybrid`](#hybrid). |
+
+Exemplo de rodapé (formato padrão/`llm`):
+
+```
+Total: 10 hits | Latencia: 1.3s | payload: strict@20 | ~2372 tokens | (lei=1856 curadoria=0 estrutura=516) | Request ID: ...
+```
+
+> Os campos são **opcionais**: aparecem quando o SDK e a API os fornecem; caso
+> contrário, são omitidos (o CLI degrada graciosamente). Use-os para **orçar o
+> contexto** antes de mandar os resultados a um LLM — o complemento natural do
+> comando [`tokens`](#tokens).
 
 ---
 
