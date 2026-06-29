@@ -48,6 +48,8 @@ vectorgov search "licitação" --raw | jq '.hits[0].text'
 | `--output/-o` | `table`/`json`/`text`/`llm`/`markdown` | `table` | Formato de saída |
 | `--raw` | flag | `false` | JSON bruto para pipes |
 
+> 🎛️ Os 4 flags de payload (`--no-nota-espec`, `--no-jurisprudencia`, `--no-proveniencia`, `--no-links`) também valem aqui — veja [Flags de payload](#flags-de-payload-suprimir-features-no-envio-ao-llm).
+
 #### Modos
 | Mode | Latência | Quando usar |
 |---|---|---|
@@ -84,6 +86,8 @@ vectorgov smart-search "pesquisa de preços" --cache
 | `--cache` | flag | `false` | Usar cache semântico |
 | `--output/-o` | `table`/`json`/`text`/`llm` | `table` | Formato |
 | `--raw` | flag | `false` | JSON bruto |
+
+> 🎛️ Os 4 flags de payload (`--no-nota-espec`, `--no-jurisprudencia`, `--no-proveniencia`, `--no-links`) também valem aqui — veja [Flags de payload](#flags-de-payload-suprimir-features-no-envio-ao-llm).
 
 #### Veja também
 - [`search`](#search) — alternativa mais barata
@@ -185,6 +189,8 @@ vectorgov lookup -o llm "Art. 11 da Lei 14.133"
 | `--raw` | flag | `false` | JSON bruto sem formatação |
 | `--pipe` | flag | `false` | Lê referências de stdin (uma por linha) |
 
+> 🎛️ Os 4 flags de payload (`--no-nota-espec`, `--no-jurisprudencia`, `--no-proveniencia`, `--no-links`) também valem aqui — veja [Flags de payload](#flags-de-payload-suprimir-features-no-envio-ao-llm).
+
 #### Output inclui (quando disponível)
 - Texto do dispositivo (consolidado para artigos)
 - `evidence_url` — link para o trecho destacado
@@ -223,6 +229,8 @@ vectorgov grep "licitação" --max 10 --context-lines 5
 | `--output/-o` | `table`/`json`/`text` | `table` | Formato |
 | `--raw` | flag | `false` | JSON bruto |
 
+> 🎛️ Os 4 flags de payload (`--no-nota-espec`, `--no-jurisprudencia`, `--no-proveniencia`, `--no-links`) também valem aqui — veja [Flags de payload](#flags-de-payload-suprimir-features-no-envio-ao-llm).
+
 #### Veja também
 - [`fs-search`](#fs-search) — busca no índice curado (não literal)
 
@@ -255,6 +263,8 @@ vectorgov fs-search "art. 75" --doc LEI-14133-2021 --output json
 | `--mode/-m` | `auto`/`index`/`grep`/`both` | `auto` | Estratégia |
 | `--output/-o` | `table`/`json`/`text` | `table` | Formato |
 | `--raw` | flag | `false` | JSON bruto |
+
+> 🎛️ Os 4 flags de payload (`--no-nota-espec`, `--no-jurisprudencia`, `--no-proveniencia`, `--no-links`) também valem aqui — veja [Flags de payload](#flags-de-payload-suprimir-features-no-envio-ao-llm).
 
 #### Veja também
 - [`search`](#search) — busca vetorial (embeddings)
@@ -291,6 +301,8 @@ vectorgov merged "licitação" --no-hybrid       # apenas índice curado
 | `--no-filesystem` | flag | `false` | Desabilita índice curado |
 | `--output/-o` | `table`/`json`/`text` | `table` | Formato |
 | `--raw` | flag | `false` | Inclui `mutual_count`, `hybrid_count`, etc. |
+
+> 🎛️ Os 4 flags de payload (`--no-nota-espec`, `--no-jurisprudencia`, `--no-proveniencia`, `--no-links`) também valem aqui — veja [Flags de payload](#flags-de-payload-suprimir-features-no-envio-ao-llm).
 
 #### Veja também
 - [`hybrid`](#hybrid) — só semântica + grafo
@@ -353,6 +365,8 @@ vectorgov explain "Art. 75 da Lei 14.133"
 vectorgov explain "§ 2 do Art. 33 da Lei 14.133" --output llm
 ```
 
+> 🎛️ Os 4 flags de payload (`--no-nota-espec`, `--no-jurisprudencia`, `--no-proveniencia`, `--no-links`) também valem aqui — veja [Flags de payload](#flags-de-payload-suprimir-features-no-envio-ao-llm).
+
 #### Veja também
 - [`lookup`](#lookup) — só a resolução
 - [`read`](#read) — só a leitura por ID
@@ -390,6 +404,8 @@ vectorgov context "pesquisa de preços" --prompt detailed
 | `--format` | `raw`/`messages`/`clipboard` | `raw` | Formato de saída |
 | `--smart` | flag | `false` | Usa `smart-search` em vez de `search` |
 | `--prompt` | str | `default` | System prompt: `default`, `concise`, `detailed`, `chatbot` |
+
+> 🎛️ Os 4 flags de payload (`--no-nota-espec`, `--no-jurisprudencia`, `--no-proveniencia`, `--no-links`) também valem aqui — veja [Flags de payload](#flags-de-payload-suprimir-features-no-envio-ao-llm).
 
 ---
 
